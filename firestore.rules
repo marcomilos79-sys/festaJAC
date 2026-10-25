@@ -1,0 +1,38 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && exists(/databases/$(db)/documents/admins/$(request.auth.uid)); }
+    // Orario di blocco squadre letto dal server: l'orologio del telefono non conta.
+    function beforeLock() { return request.time < get(/databases/$(db)/documents/config/game).data.lockAt; }
+    // Le regole segrete diventano leggibili a tutti un'ora prima della fine del gioco.
+    function revealed() { return request.time > get(/databases/$(db)/documents/config/game).data.endAt - duration.value(1, 'h'); }
+    function validTeam(d) {
+      return d.keys().hasOnly(['name', 'owner', 'members', 'captain'])
+        && d.name is string && d.name.size() > 0 && d.name.size() <= 40
+        && d.owner is string && d.owner.size() <= 40
+        && d.members is list && d.members.size() == 5 && d.members.toSet().size() == 5
+        && d.captain in d.members;
+    }
+
+    // Gli admin si creano a mano dalla console Firebase (id documento = UID).
+    match /admins/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // Ogni utente ha una sola squadra (id = suo UID), modificabile solo prima del blocco.
+    match /teams/{uid} {
+      allow read: if true;
+      allow create, update: if isAdmin()
+        || (signedIn() && request.auth.uid == uid && beforeLock() && validTeam(request.resource.data));
+      allow delete: if isAdmin();
+    }
+
+    match /config/{id}   { allow read: if true; allow write: if isAdmin(); }
+    match /players/{id}  { allow read: if true; allow write: if isAdmin(); }
+    match /rules/{id}    { allow read: if true; allow write: if isAdmin(); }
+    match /events/{id}   { allow read: if true; allow write: if isAdmin(); }
+    match /secret/{id}   { allow read: if isAdmin() || revealed(); allow write: if isAdmin(); }
+  }
+}

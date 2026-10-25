@@ -11,7 +11,13 @@ Sito statico (GitHub Pages) + Firebase (Auth email/password + Firestore). Nessun
 3. **Firestore Database**: crealo (modalità produzione), poi in *Rules* incolla il contenuto di [firestore.rules](firestore.rules) e pubblica.
 4. **GitHub**: crea un repo, carica questi file, *Settings → Pages → Deploy from branch → main / root*.
 5. **Admin**: registratevi entrambi dall'app, copiate il vostro UID (in *La mia squadra*), poi in Firestore crea la collezione `admins` con un documento per ognuno, **ID documento = UID** (nessun campo necessario). Ricaricate la pagina: compare la tab *Admin*.
-6. Dalla tab Admin: imposta gli **orari** (blocco squadre 20:00, fine gioco 01:00 — finché non li salvi nessuno può salvare la squadra), aggiungi i **partecipanti** e le **regole bonus/malus**.
+6. Dalla tab Admin: imposta gli **orari** (blocco squadre 20:00, fine gioco 01:00 — finché non li salvi nessuno può salvare la squadra), aggiungi i **partecipanti**, poi premi **Importa le regole del regolamento**: carica tutti i bonus/malus base più 6 regole segrete (3 bonus, 3 malus) da personalizzare con *Modifica*.
+
+## Regole segrete 🤫
+
+Stanno in una collezione separata (`secret`) che il database fa leggere solo agli admin, e a tutti da **un'ora prima della fine** del gioco. Se nel frattempo assegnate una regola segreta, gli altri vedono i punti ma con la scritta "Bonus/Malus segreto"; il testo vero compare allo svelamento.
+
+Ogni volta che aggiorni [firestore.rules](firestore.rules), ricordati di ripubblicarle nella console.
 
 ## Chi può fare cosa (applicato dalle regole Firestore, non solo dall'interfaccia)
 

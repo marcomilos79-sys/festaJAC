@@ -74,6 +74,7 @@
 
     <div id="team-box" hidden>
       <p>Ciao <b id="me-name"></b> · <button id="logout">Esci</button></p>
+      <p id="editing" class="row" hidden><span class="grow">Admin: stai modificando la squadra di <b id="editing-name"></b></span><button type="button" id="stop-edit">Torna alla mia</button></p>
       <form id="team-form">
         <label>Nome squadra<input name="tname" maxlength="40" required></label>
         <p class="muted">Scegli 5 giocatori (✓) e il capitano (©, punti e malus doppi).</p>
@@ -81,7 +82,7 @@
         <p id="pick-info" class="muted"></p>
         <button class="primary">Salva squadra</button>
       </form>
-      <p class="muted">Il tuo UID: <code id="me-uid"></code></p>
+      <p class="muted">Il tuo UID: <code id="me-uid"></code> · <span id="me-admin"></span></p>
     </div>
   </section>
 
@@ -93,9 +94,11 @@
       <li class="row" id="rule-lock"></li>
       <li class="row" id="rule-end"></li>
       <li class="row">Bonus e malus li assegnano solo gli admin: quando succede qualcosa, chiamate uno di loro a vedere!</li>
+      <li class="row">Gli sticker sono contati e diversi per ognuno: a fine gioco vengono ricontati e ogni sticker mancante conta come "attaccato in giro".</li>
     </ul>
     <h2>Bonus e malus</h2>
     <ul id="rules"></ul>
+    <p id="secret-info" class="muted"></p>
   </section>
 
   <section id="tab-admin" hidden>
@@ -105,12 +108,17 @@
       <label>Regola<select name="rule"><option value="">— personalizzato —</option></select></label>
       <div class="two">
         <label>Punti (negativi = malus)<input name="points" type="number" required></label>
-        <label>Descrizione<input name="note" required maxlength="80"></label>
+        <label>Quante volte<input name="qty" type="number" min="1" value="1" required></label>
       </div>
+      <label>Descrizione<input name="note" required maxlength="80"></label>
+      <p class="muted">"Quante volte" serve per le regole "per ogni" (sconosciuto nel selfie, vittima della politica…). Gli eventi delle regole 🤫 compaiono a tutti come "Bonus/Malus segreto" finché non vengono svelate.</p>
       <button class="primary">Assegna</button>
     </form>
     <h3>Ultimi eventi</h3>
     <ul id="ev-list"></ul>
+
+    <h2>Squadre</h2>
+    <ul id="team-list"></ul>
 
     <h2>Partecipanti</h2>
     <form id="player-form" class="two">
@@ -125,8 +133,13 @@
         <input name="label" placeholder="Es. Balla sul tavolo" required maxlength="80">
         <input name="points" type="number" placeholder="Punti" required>
       </div>
-      <button class="primary">Aggiungi regola</button>
+      <label><input type="checkbox" name="secret"> 🤫 Segreta (tutti la vedono solo un'ora prima della fine)</label>
+      <div class="two">
+        <button class="primary" id="rule-save">Aggiungi regola</button>
+        <button type="button" id="rule-cancel" hidden>Annulla</button>
+      </div>
     </form>
+    <button type="button" id="seed" hidden>Importa le regole del regolamento (+ 6 segrete da personalizzare)</button>
     <ul id="rule-list"></ul>
 
     <h2>Orari</h2>
