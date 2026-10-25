@@ -75,21 +75,31 @@ onAuthStateChanged(auth, async u => {
   if (S.admin) seedOnce();
 });
 
-// Carica regolamento + 6 regole segrete una volta sola: il flag in config/game evita doppioni anche con due admin.
+// Partecipanti iniziali (dal sondaggio WhatsApp), caricati in automatico come il regolamento.
+const BASE_PLAYERS = ['Marco Milos', 'Alessandra Volpi', 'Gabritir', 'Cri', 'Sofia Dina', 'Riccardo Daniele', 'Edoardo Massarelli', 'Panzi',
+  'Vi', 'Matteo Bali', 'Aimée', 'Alessandro Verdi', 'Sara Azzarelli', 'Sara', 'Leo Verdacchi', 'Giulioanve'];
+
+// Caricamenti iniziali, ognuno una volta sola: i flag in config/game evitano doppioni anche con due admin.
+const SEEDS = {
+  seeded: tx => {
+    for (const [label, points, all] of BASE_RULES) tx.set(doc(collection(db, 'rules')), all ? { label, points, all } : { label, points });
+    for (let i = 1; i <= 3; i++) {
+      tx.set(doc(collection(db, 'secret')), { label: `Bonus segreto ${i} (da modificare)`, points: 20 });
+      tx.set(doc(collection(db, 'secret')), { label: `Malus segreto ${i} (da modificare)`, points: -20 });
+    }
+  },
+  playersSeeded: tx => { for (const name of BASE_PLAYERS) tx.set(doc(collection(db, 'players')), { name }); },
+};
 let seeding = false;
 async function seedOnce() {
   if (seeding) return;
   seeding = true;
   try {
     await runTransaction(db, async tx => {
-      const cfg = doc(db, 'config', 'game');
-      if ((await tx.get(cfg)).data()?.seeded) return;
-      for (const [label, points, all] of BASE_RULES) tx.set(doc(collection(db, 'rules')), all ? { label, points, all } : { label, points });
-      for (let i = 1; i <= 3; i++) {
-        tx.set(doc(collection(db, 'secret')), { label: `Bonus segreto ${i} (da modificare)`, points: 20 });
-        tx.set(doc(collection(db, 'secret')), { label: `Malus segreto ${i} (da modificare)`, points: -20 });
-      }
-      tx.set(cfg, { seeded: true }, { merge: true });
+      const cfg = doc(db, 'config', 'game'), done = (await tx.get(cfg)).data() || {};
+      const todo = Object.keys(SEEDS).filter(k => !done[k]);
+      todo.forEach(k => SEEDS[k](tx));
+      if (todo.length) tx.set(cfg, Object.fromEntries(todo.map(k => [k, true])), { merge: true });
     });
   } catch (e) {
     seeding = false;
