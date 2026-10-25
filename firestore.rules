@@ -45,5 +45,18 @@ service cloud.firestore {
     match /rules/{id}    { allow read: if true; allow write: if isAdmin(); }
     match /events/{id}   { allow read: if true; allow write: if isAdmin(); }
     match /secret/{id}   { allow read: if isAdmin() || revealed(); allow write: if isAdmin(); }
+
+    // Prove fotografiche: le vedono solo gli admin e chi le ha mandate; si inviano fino alla fine del gioco.
+    match /proofs/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid
+        && ownsPlayer(request.resource.data.playerId)
+        && request.time < get(/databases/$(db)/documents/config/game).data.endAt
+        && request.resource.data.keys().hasOnly(['playerId', 'uid', 'ruleId', 'label', 'image', 'at', 'status'])
+        && request.resource.data.status == 'pending' && request.resource.data.at == request.time
+        && request.resource.data.image is string && request.resource.data.image.size() < 900000
+        && request.resource.data.label is string && request.resource.data.label.size() <= 120;
+      allow update, delete: if isAdmin();
+    }
   }
 }

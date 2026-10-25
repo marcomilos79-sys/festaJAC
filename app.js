@@ -1,6 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, signOut, sendPasswordResetEmail, signInAnonymously } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js';
-import { getFirestore, collection, doc, onSnapshot, getDoc, setDoc, addDoc, deleteDoc, updateDoc, serverTimestamp, Timestamp, runTransaction } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js';
+import { getFirestore, collection, doc, onSnapshot, getDoc, setDoc, addDoc, deleteDoc, updateDoc, serverTimestamp, Timestamp, runTransaction, query, where } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js';
 import { playerScores, memberScore, teamScore } from './score.js';
 
 const app = initializeApp({
@@ -15,7 +15,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 // editing = UID della squadra altrui che l'admin sta modificando; editRule = percorso della regola in modifica
-const S = { user: null, admin: false, players: [], rules: [], secret: [], events: [], teams: [], cfg: {}, draft: null, draftFor: null, editing: null, editRule: null };
+const S = { user: null, admin: false, players: [], rules: [], secret: [], events: [], teams: [], proofs: [], proofImg: null, cfg: {}, draft: null, draftFor: null, editing: null, editRule: null };
 
 // Regolamento di base, caricato in automatico la prima volta che un admin apre l'app. [testo, punti, tuttiIPunti]
 const BASE_RULES = [
@@ -53,6 +53,9 @@ const avatar = name => PHOTOS.has(slug(name))
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
 const fmt = n => `<span class="pts ${n > 0 ? 'plus' : n < 0 ? 'minus' : ''}">${n > 0 ? '+' : ''}${n}</span>`;
+const fmtPlain = n => (n > 0 ? '+' : '') + n;
+// Riscrive solo se cambia: evita di ricaricare le foto (e farle lampeggiare) a ogni aggiornamento live.
+const setHTML = (sel, html) => { const el = $(sel); if (el._html !== html) { el._html = html; el.innerHTML = html; } };
 const rulePts = r => r.all ? '<span class="pts minus">−tutti i punti</span>' : fmt(r.points);
 const byPts = (a, b) => (b.all ? -1e9 : b.points) - (a.all ? -1e9 : a.points);
 const rulePath = r => (r.secret ? 'secret/' : 'rules/') + r.id;
@@ -88,8 +91,38 @@ onAuthStateChanged(auth, async u => {
   if (u) S.admin = await getDoc(doc(db, 'admins', u.uid)).then(d => d.exists(), e => (console.error(e), false));
   $('#me-admin').textContent = u && !u.isAnonymous ? (S.admin ? 'sei admin' : `non admin (manca il documento admins/${u.uid})`) : '';
   render();
+  syncProofs(u);
   if (S.admin) seedOnce();
 });
+
+// Prove fotografiche: l'admin le vede tutte, il giocatore solo le sue (il database applica lo stesso filtro).
+const okImg = s => /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(s) ? s : ''; // mai HTML/script dentro src
+let stopProofs = null;
+function syncProofs(u) {
+  stopProofs?.(); stopProofs = null; S.proofs = [];
+  if (!u) return;
+  const q = S.admin ? collection(db, 'proofs') : query(collection(db, 'proofs'), where('uid', '==', u.uid));
+  stopProofs = onSnapshot(q, snap => {
+    S.proofs = snap.docs.map(d => ({ id: d.id, ...d.data(), image: okImg(d.data().image) }));
+    render();
+  }, e => console.error(e));
+}
+
+// Riduce la foto (max 1280px, JPEG) per stare sotto il limite di 1 MB di un documento Firestore.
+async function shrink(file) {
+  const img = new Image(), url = URL.createObjectURL(file);
+  try {
+    await new Promise((ok, ko) => { img.onload = ok; img.onerror = () => ko(new Error('formato foto non supportato')); img.src = url; });
+    for (const [max, q] of [[1280, .7], [1024, .6], [800, .5]]) {
+      const s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight)), c = document.createElement('canvas');
+      c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      const data = c.toDataURL('image/jpeg', q);
+      if (data.length < 900000) return data;
+    }
+    throw new Error('foto troppo grande');
+  } finally { URL.revokeObjectURL(url); }
+}
 
 // Partecipanti iniziali (dal sondaggio WhatsApp), caricati in automatico come il regolamento.
 const BASE_PLAYERS = ['Marco Milos', 'Alessandra Volpi', 'Gabritir', 'Cri', 'Sofia Dina', 'Riccardo Daniele', 'Edoardo Massarelli', 'Panzi',
@@ -229,9 +262,30 @@ function render() {
     $('#team-form').querySelector('button').disabled = !can;
   }
 
+  // Prove fotografiche (giocatore): solo per le sfide bonus, finché il gioco non è finito.
+  const pf = $('#proof-form'), prv = pf.rule.value;
+  pf.hidden = !me || !!S.editing || ph === 'over';
+  pf.rule.innerHTML = '<option value="">— scegli la sfida —</option>' + rules.filter(r => r.points > 0).map(r => `<option value="${esc(r.id)}">${r.secret ? '🤫 ' : ''}${esc(r.label)}</option>`).join('');
+  pf.rule.value = prv;
+  $('#proof-send').disabled = !S.proofImg;
+  const STATUS = { pending: 'In attesa', ok: 'Validata', no: 'Rifiutata' };
+  const pill = s => `<span class="pill ${s}">${STATUS[s] ?? ''}</span>`;
+  const proofs = [...S.proofs].sort((a, b) => (b.at?.toMillis() ?? Date.now()) - (a.at?.toMillis() ?? Date.now()));
+  const myProofs = proofs.filter(p => p.uid === u?.uid);
+  setHTML('#my-proofs', myProofs.length ? '<h3>Le tue prove</h3>' + myProofs.map(p => `<li class="row"><img class="thumb" src="${p.image}" alt=""><span class="grow">${esc(p.label)}<br><small>${time(p.at)}</small></span>${pill(p.status)}</li>`).join('') : '');
+
   // Admin
   $('[data-tab=admin]').hidden = !S.admin;
   if (!S.admin) return;
+  const pending = proofs.filter(p => p.status === 'pending').length;
+  $('#proof-title').textContent = `Prove fotografiche${pending ? ` · ${pending} da vedere` : ''}`;
+  setHTML('#proof-list', proofs.map(p => {
+    const r = allRules().find(r => r.id === p.ruleId), who = pname(p.playerId);
+    return `<li class="card proof"><div class="head">${avatar(who)}<span class="grow"><b>${esc(who)}</b><br><small>${esc(p.label)} · ${time(p.at)}</small></span>${pill(p.status)}</div>
+      <img class="shot" src="${p.image}" alt="Prova di ${esc(who)}: ${esc(p.label)}" loading="lazy">
+      ${p.status === 'pending' ? `<div class="two"><button type="button" class="primary" data-ok="${esc(p.id)}" ${r ? '' : 'disabled'}>Valida ${r ? fmtPlain(r.points) : ''}</button><button type="button" data-no="${esc(p.id)}">Rifiuta</button></div>` : ''}
+      <button type="button" data-del="proofs/${esc(p.id)}">Elimina foto</button></li>`;
+  }).join('') || '<li class="muted">Nessuna prova ancora.</li>');
   const f = $('#ev-form'), pv = f.player.value, rv = f.rule.value;
   f.player.innerHTML = '<option value="">— scegli —</option>' + players.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
   f.rule.innerHTML = '<option value="">— personalizzato —</option>' + rules.map(r => `<option value="${esc(r.id)}">${r.secret ? '🤫 ' : ''}${esc(r.label)} (${r.all ? 'tutti i punti' : (r.points > 0 ? '+' : '') + r.points})</option>`).join('');
@@ -324,15 +378,46 @@ $('#ev-form').addEventListener('change', e => {
   f.points.value = r.all ? -Math.max(0, playerScores(S.events)[f.player.value] || 0) : r.points;
   if (r.all) f.qty.value = 1;
 });
+// Il testo pubblico non deve svelare la regola segreta: quello vero si legge dalla regola dopo lo svelamento.
+const addEvent = (playerId, r, pts, qty, note) => addDoc(collection(db, 'events'), {
+  playerId, points: pts * qty, qty, note, at: serverTimestamp(), by: S.user.displayName || S.user.email,
+  ...(r?.secret && { secret: r.id, note: pts >= 0 ? 'Bonus segreto' : 'Malus segreto' }),
+});
 $('#ev-form').addEventListener('submit', act(async e => {
   e.preventDefault();
-  const f = e.target, r = allRules().find(r => r.id === f.rule.value), qty = Number(f.qty.value), pts = Number(f.points.value);
-  const ev = { playerId: f.player.value, points: pts * qty, qty, note: f.note.value.trim(), at: serverTimestamp(), by: S.user.displayName || S.user.email };
-  // Il testo pubblico non deve svelare la regola segreta: quello vero si legge dalla regola dopo lo svelamento.
-  if (r?.secret) Object.assign(ev, { secret: r.id, note: pts >= 0 ? 'Bonus segreto' : 'Malus segreto' });
-  await addDoc(collection(db, 'events'), ev);
+  const f = e.target, r = allRules().find(r => r.id === f.rule.value);
+  await addEvent(f.player.value, r, Number(f.points.value), Number(f.qty.value), f.note.value.trim());
   f.reset();
 }));
+
+// Prove fotografiche: scatto/galleria → anteprima → invio
+$('#proof-form').addEventListener('change', act(async e => {
+  if (e.target.type !== 'file' || !e.target.files[0]) return;
+  S.proofImg = await shrink(e.target.files[0]);
+  e.target.value = '';
+  $('#proof-preview').src = S.proofImg;
+  $('#proof-preview').hidden = false;
+  render();
+}));
+$('#proof-form').addEventListener('submit', act(async e => {
+  e.preventDefault();
+  const f = e.target, me = S.players.find(p => p.uid === S.user?.uid), r = allRules().find(r => r.id === f.rule.value);
+  if (!me || !r || !S.proofImg) return toast('Scegli la sfida e fai la foto');
+  const btn = $('#proof-send');
+  btn.disabled = true; btn.textContent = 'Invio…';
+  try {
+    await addDoc(collection(db, 'proofs'), { playerId: me.id, uid: S.user.uid, ruleId: r.id, label: r.label, image: S.proofImg, at: serverTimestamp(), status: 'pending' });
+    S.proofImg = null; f.reset(); $('#proof-preview').hidden = true;
+    toast('Prova inviata! Gli admin la controlleranno');
+  } finally { btn.textContent = 'Invia prova'; render(); }
+}));
+async function validateProof(id) {
+  const p = S.proofs.find(p => p.id === id), r = allRules().find(r => r.id === p?.ruleId);
+  if (!p || !r) return;
+  await addEvent(p.playerId, r, r.all ? -Math.max(0, playerScores(S.events)[p.playerId] || 0) : r.points, 1, r.label);
+  await updateDoc(doc(db, 'proofs', id), { status: 'ok' });
+  toast('Prova validata, punti assegnati');
+}
 $('#player-form').addEventListener('submit', act(async e => {
   e.preventDefault();
   await addDoc(collection(db, 'players'), { name: e.target.pname.value.trim() });
@@ -363,7 +448,10 @@ $('#rule-form').addEventListener('submit', act(async e => {
 const editTeam = id => { S.editing = id; render(); };
 $('#stop-edit').addEventListener('click', () => editTeam(null));
 $('#tab-admin').addEventListener('click', act(async e => {
-  const { edit, editrule, del: path } = e.target.dataset;
+  const { edit, editrule, del: path, ok, no } = e.target.dataset;
+  if (ok || no) e.target.disabled = true; // niente doppio tocco = niente punti doppi
+  if (ok) await validateProof(ok);
+  if (no) await updateDoc(doc(db, 'proofs', no), { status: 'no' });
   if (edit) { editTeam(edit); $('[data-tab=squadra]').click(); }
   if (editrule) editRule(editrule);
   if (!path || !confirm('Eliminare?')) return;

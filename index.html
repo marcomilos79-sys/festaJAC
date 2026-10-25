@@ -129,6 +129,19 @@
   .slots i.on { background:var(--gold); transform:scale(1.15); }
   .team-name input { font:600 1.2rem var(--head); }
   ::placeholder { color:#6f6894; opacity:1; }
+
+  /* Prove fotografiche */
+  label.btn { display:flex; align-items:center; justify-content:center; gap:8px; min-height:52px; margin:4px 0 12px; border-radius:var(--r-sm);
+    background:var(--card2); border:1.5px dashed var(--gold); color:var(--text); font-size:1rem; cursor:pointer; transition:transform var(--t-fast) var(--ease); }
+  label.btn:active { transform:scale(.96); }
+  label.btn:focus-within { outline:3px solid var(--gold); outline-offset:2px; }
+  .shot { display:block; width:100%; max-height:60vh; object-fit:contain; border-radius:var(--r-sm); margin:8px 0 12px; background:#000; animation:rise var(--t) var(--ease); }
+  .thumb { width:52px; height:52px; flex:none; border-radius:10px; object-fit:cover; }
+  .pill { padding:4px 10px; border-radius:999px; font:700 .8rem var(--head); white-space:nowrap; }
+  .pill.pending { color:var(--gold); background:#ffc83d1f; } .pill.ok { color:var(--plus); background:#3ddc971f; } .pill.no { color:var(--minus); background:#ff6b7a1f; }
+  .proof { display:block; }
+  .proof .head { display:flex; gap:12px; align-items:center; }
+  .proof .two button { width:100%; }
   #team-form > button.primary { position:sticky; bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 12px); margin-top:8px; }
 
   #me-bar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
@@ -220,6 +233,19 @@
         <button class="primary">Salva squadra</button>
       </form>
     </div>
+
+    <form id="proof-form" hidden>
+      <h2 style="margin-top:0">Prova fotografica</h2>
+      <p class="hint">Hai fatto una sfida? Manda la foto: la vedono solo gli admin, che ti assegnano i punti.</p>
+      <label>Sfida<select name="rule" required></select></label>
+      <div class="two">
+        <label class="btn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>Scatta<input type="file" class="sr" accept="image/*" capture="environment"></label>
+        <label class="btn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></svg>Galleria<input type="file" class="sr" accept="image/*"></label>
+      </div>
+      <img id="proof-preview" class="shot" hidden alt="Anteprima della foto da inviare">
+      <button class="primary" id="proof-send" disabled>Invia prova</button>
+    </form>
+    <ul id="my-proofs"></ul>
   </section>
 
   <section id="tab-regole" hidden>
@@ -240,6 +266,9 @@
   </section>
 
   <section id="tab-admin" hidden>
+    <h2 id="proof-title">Prove fotografiche</h2>
+    <ul id="proof-list"></ul>
+
     <h2>Assegna bonus/malus</h2>
     <form id="ev-form">
       <label>Giocatore<select name="player" required></select></label>
@@ -303,6 +332,6 @@
 
 <div id="toast" role="status" aria-live="polite"></div>
 
-<script type="module" src="app.js?v=8"></script><!-- aumenta v a ogni modifica di app.js: evita che il browser usi la versione vecchia in cache -->
+<script type="module" src="app.js?v=9"></script><!-- aumenta v a ogni modifica di app.js: evita che il browser usi la versione vecchia in cache -->
 </body>
 </html>

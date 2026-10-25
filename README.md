@@ -31,3 +31,7 @@ Per correggere un punteggio: elimina l'evento sbagliato dalla lista *Ultimi even
 ## Test
 
 `node score.test.mjs` verifica il calcolo dei punti (capitano x2).
+
+## Prove fotografiche 📷
+
+In *Mia squadra* il giocatore sceglie la sfida, scatta (o prende dalla galleria) e invia. La foto viene ridotta (max 1280px, ~250 KB) e salvata in Firestore nella collezione `proofs`: niente Firebase Storage, che sui progetti nuovi richiede il piano a pagamento. Le vedono solo gli admin (tab Admin, in cima) e chi le ha mandate; *Valida* assegna subito i punti della regola, *Rifiuta* la scarta. Si possono inviare fino alla fine del gioco.
