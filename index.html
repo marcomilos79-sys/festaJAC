@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FantaLaurea</title>
+<style>
+  :root { --bg:#14111f; --card:#211c33; --line:#3a3254; --text:#f3f0ff; --muted:#a59cc4; --acc:#ffcc33; --plus:#4ade80; --minus:#f87171; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.4 system-ui, sans-serif; }
+  header, main { max-width:640px; margin:0 auto; padding:16px; }
+  header { padding-bottom:0; }
+  h1 { margin:0; color:var(--acc); }
+  h2 { font-size:1.1rem; margin:24px 0 8px; }
+  #status { color:var(--muted); margin:4px 0 12px; }
+  nav { display:flex; gap:6px; max-width:640px; margin:0 auto; padding:0 16px; overflow-x:auto; }
+  nav button { flex:1; }
+  button { background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:10px 12px; font:inherit; cursor:pointer; }
+  button.on, button.primary { background:var(--acc); color:#000; border-color:var(--acc); }
+  input, select { width:100%; background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:10px; font:inherit; margin:4px 0 10px; }
+  input[type=checkbox], input[type=radio] { width:22px; height:22px; margin:0; accent-color:var(--acc); }
+  label { color:var(--muted); font-size:.9rem; }
+  form, details, .row { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px; margin:8px 0; }
+  ol, ul { list-style:none; padding:0; margin:0; }
+  summary { cursor:pointer; display:flex; gap:8px; align-items:baseline; }
+  details ul { margin-top:8px; }
+  details li, .row { display:flex; gap:8px; align-items:center; padding:6px 0; border-top:1px solid var(--line); }
+  .row { padding:8px 12px; border-top:1px solid var(--line); }
+  .grow { flex:1; min-width:0; }
+  .pts { margin-left:auto; font-weight:700; white-space:nowrap; }
+  .plus { color:var(--plus); } .minus { color:var(--minus); }
+  small, .muted { color:var(--muted); }
+  .rank { color:var(--acc); font-weight:700; min-width:1.6em; }
+  .two { display:flex; gap:8px; } .two > * { flex:1; }
+  code { word-break:break-all; }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎓 FantaLaurea</h1>
+  <p id="status">Caricamento…</p>
+</header>
+<nav>
+  <button data-tab="classifica" class="on">Squadre</button>
+  <button data-tab="giocatori">Giocatori</button>
+  <button data-tab="squadra">La mia squadra</button>
+  <button data-tab="regole">Regole</button>
+  <button data-tab="admin" hidden>Admin</button>
+</nav>
+<main>
+  <section id="tab-classifica">
+    <h2>Classifica squadre</h2>
+    <ol id="lb-teams"></ol>
+  </section>
+
+  <section id="tab-giocatori" hidden>
+    <h2>Classifica giocatori</h2>
+    <p class="muted">Tocca un giocatore per vedere bonus e malus.</p>
+    <ol id="lb-players"></ol>
+  </section>
+
+  <section id="tab-squadra" hidden>
+    <form id="auth-form">
+      <label>Email<input name="email" type="email" required autocomplete="email"></label>
+      <label>Password (min 6 caratteri)<input name="password" type="password" required minlength="6" autocomplete="current-password"></label>
+      <label>Il tuo nome (solo per registrarti)<input name="nick" maxlength="40" autocomplete="name"></label>
+      <div class="two">
+        <button class="primary" value="login">Accedi</button>
+        <button value="signup">Registrati</button>
+      </div>
+      <p><button value="reset" formnovalidate>Password dimenticata?</button></p>
+    </form>
+
+    <div id="team-box" hidden>
+      <p>Ciao <b id="me-name"></b> · <button id="logout">Esci</button></p>
+      <form id="team-form">
+        <label>Nome squadra<input name="tname" maxlength="40" required></label>
+        <p class="muted">Scegli 5 giocatori (✓) e il capitano (©, punti e malus doppi).</p>
+        <ul id="pick"></ul>
+        <p id="pick-info" class="muted"></p>
+        <button class="primary">Salva squadra</button>
+      </form>
+      <p class="muted">Il tuo UID: <code id="me-uid"></code></p>
+    </div>
+  </section>
+
+  <section id="tab-regole" hidden>
+    <h2>Come funziona</h2>
+    <ul>
+      <li class="row">Schiera una squadra di 5 partecipanti alla festa e dalle un nome.</li>
+      <li class="row">Uno dei 5 è il capitano: prende punti doppi e malus doppi.</li>
+      <li class="row" id="rule-lock"></li>
+      <li class="row" id="rule-end"></li>
+      <li class="row">Bonus e malus li assegnano solo gli admin: quando succede qualcosa, chiamate uno di loro a vedere!</li>
+    </ul>
+    <h2>Bonus e malus</h2>
+    <ul id="rules"></ul>
+  </section>
+
+  <section id="tab-admin" hidden>
+    <h2>Assegna bonus/malus</h2>
+    <form id="ev-form">
+      <label>Giocatore<select name="player" required></select></label>
+      <label>Regola<select name="rule"><option value="">— personalizzato —</option></select></label>
+      <div class="two">
+        <label>Punti (negativi = malus)<input name="points" type="number" required></label>
+        <label>Descrizione<input name="note" required maxlength="80"></label>
+      </div>
+      <button class="primary">Assegna</button>
+    </form>
+    <h3>Ultimi eventi</h3>
+    <ul id="ev-list"></ul>
+
+    <h2>Partecipanti</h2>
+    <form id="player-form" class="two">
+      <input name="pname" placeholder="Nome e cognome" required maxlength="40">
+      <button class="primary">Aggiungi</button>
+    </form>
+    <ul id="player-list"></ul>
+
+    <h2>Regole bonus/malus</h2>
+    <form id="rule-form">
+      <div class="two">
+        <input name="label" placeholder="Es. Balla sul tavolo" required maxlength="80">
+        <input name="points" type="number" placeholder="Punti" required>
+      </div>
+      <button class="primary">Aggiungi regola</button>
+    </form>
+    <ul id="rule-list"></ul>
+
+    <h2>Orari</h2>
+    <form id="cfg-form">
+      <label>Blocco squadre<input name="lockAt" type="datetime-local" required></label>
+      <label>Fine gioco<input name="endAt" type="datetime-local" required></label>
+      <button class="primary">Salva orari</button>
+    </form>
+  </section>
+</main>
+<script type="module" src="app.js"></script>
+</body>
+</html>
