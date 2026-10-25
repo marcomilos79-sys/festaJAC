@@ -63,6 +63,15 @@
   </section>
 
   <section id="tab-squadra" hidden>
+    <p id="me-bar" hidden>Ciao <b id="me-name"></b> · <button id="logout">Esci</button><br>
+      <small id="me-tech">UID: <code id="me-uid"></code> · <span id="me-admin"></span></small></p>
+
+    <form id="name-form" hidden>
+      <label>Il tuo nome, esattamente come te l'hanno dato gli admin<input name="who" required autocomplete="off" maxlength="40"></label>
+      <button class="primary">Entra</button>
+    </form>
+
+    <details id="admin-login" hidden><summary>Accesso admin</summary>
     <form id="auth-form">
       <label>Email<input name="email" type="email" required autocomplete="email"></label>
       <label>Password (min 6 caratteri)<input name="password" type="password" required minlength="6" autocomplete="current-password"></label>
@@ -73,9 +82,9 @@
       </div>
       <p><button value="reset" formnovalidate>Password dimenticata?</button></p>
     </form>
+    </details>
 
     <div id="team-box" hidden>
-      <p>Ciao <b id="me-name"></b> · <button id="logout">Esci</button></p>
       <p id="editing" class="row" hidden><span class="grow">Admin: stai modificando la squadra di <b id="editing-name"></b></span><button type="button" id="stop-edit">Torna alla mia</button></p>
       <form id="team-form">
         <label>Nome squadra<input name="tname" maxlength="40" required></label>
@@ -84,7 +93,6 @@
         <p id="pick-info" class="muted"></p>
         <button class="primary">Salva squadra</button>
       </form>
-      <p class="muted">Il tuo UID: <code id="me-uid"></code> · <span id="me-admin"></span></p>
     </div>
   </section>
 
@@ -152,6 +160,6 @@
     </form>
   </section>
 </main>
-<script type="module" src="app.js?v=5"></script><!-- aumenta v a ogni modifica di app.js: evita che il browser usi la versione vecchia in cache -->
+<script type="module" src="app.js?v=6"></script><!-- aumenta v a ogni modifica di app.js: evita che il browser usi la versione vecchia in cache -->
 </body>
 </html>

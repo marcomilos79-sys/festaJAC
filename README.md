@@ -10,8 +10,9 @@ Sito statico (GitHub Pages) + Firebase (Auth email/password + Firestore). Nessun
 2. **Authentication → Settings → Authorized domains**: aggiungi `<tuo-utente>.github.io`.
 3. **Firestore Database**: crealo (modalità produzione), poi in *Rules* incolla il contenuto di [firestore.rules](firestore.rules) e pubblica.
 4. **GitHub**: crea un repo, carica questi file, *Settings → Pages → Deploy from branch → main / root*.
-5. **Admin**: registratevi entrambi dall'app, copiate il vostro UID (in *La mia squadra*), poi in Firestore crea la collezione `admins` con un documento per ognuno, **ID documento = UID** (nessun campo necessario). Ricaricate la pagina: compare la tab *Admin*.
-6. Dalla tab Admin: imposta gli **orari** (blocco squadre 20:00, fine gioco 01:00 — finché non li salvi nessuno può salvare la squadra), aggiungi i **partecipanti**. Il regolamento (tutti i bonus/malus + 6 regole segrete da personalizzare con *Modifica*) si carica da solo la prima volta che un admin apre l'app.
+5. **Accesso anonimo**: in *Authentication → Sign-in method* abilita anche *Anonimo* (serve per l'accesso dei giocatori col nome).
+6. **Admin**: registratevi entrambi dall'app (in *La mia squadra → Accesso admin*), copiate il vostro UID (in *La mia squadra*), poi in Firestore crea la collezione `admins` con un documento per ognuno, **ID documento = UID** (nessun campo necessario). Ricaricate la pagina: compare la tab *Admin*.
+7. Dalla tab Admin: imposta gli **orari** (blocco squadre 20:00, fine gioco 01:00 — finché non li salvi nessuno può salvare la squadra), aggiungi i **partecipanti**. Il regolamento (tutti i bonus/malus + 6 regole segrete da personalizzare con *Modifica*) si carica da solo la prima volta che un admin apre l'app.
 
 ## Regole segrete 🤫
 
@@ -22,7 +23,7 @@ Ogni volta che aggiorni [firestore.rules](firestore.rules), ricordati di ripubbl
 ## Chi può fare cosa (applicato dalle regole Firestore, non solo dall'interfaccia)
 
 - Tutti (anche senza login): vedono classifiche, squadre, profili giocatori, regole.
-- Giocatore loggato: crea/modifica **solo la propria** squadra, solo prima dell'orario di blocco (ora del server), solo 5 giocatori distinti con capitano tra questi.
+- Giocatore: entra scrivendo **solo il suo nome** (come l'hanno inserito gli admin), poi crea/modifica **solo la propria** squadra, solo prima dell'orario di blocco (ora del server), solo 5 giocatori distinti con capitano tra questi.
 - Admin: tutto, in qualsiasi momento (eventi, partecipanti, regole, orari, squadre).
 
 Per correggere un punteggio: elimina l'evento sbagliato dalla lista *Ultimi eventi* e riassegnalo.

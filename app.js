@@ -1,6 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js';
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, signOut, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js';
-import { getFirestore, collection, doc, onSnapshot, getDoc, setDoc, addDoc, deleteDoc, serverTimestamp, Timestamp, runTransaction } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, signOut, sendPasswordResetEmail, signInAnonymously } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js';
+import { getFirestore, collection, doc, onSnapshot, getDoc, setDoc, addDoc, deleteDoc, updateDoc, serverTimestamp, Timestamp, runTransaction } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js';
 import { playerScores, memberScore, teamScore } from './score.js';
 
 const app = initializeApp({
@@ -15,7 +15,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 // editing = UID della squadra altrui che l'admin sta modificando; editRule = percorso della regola in modifica
-const S = { user: null, admin: false, players: [], rules: [], secret: [], events: [], teams: [], cfg: {}, draft: null, editing: null, editRule: null };
+const S = { user: null, admin: false, players: [], rules: [], secret: [], events: [], teams: [], cfg: {}, draft: null, draftFor: null, editing: null, editRule: null };
 
 // Regolamento di base, caricato in automatico la prima volta che un admin apre l'app. [testo, punti, tuttiIPunti]
 const BASE_RULES = [
@@ -79,7 +79,7 @@ onAuthStateChanged(auth, async u => {
   $('#team-form').reset();
   render();
   if (u) S.admin = await getDoc(doc(db, 'admins', u.uid)).then(d => d.exists(), e => (console.error(e), false));
-  $('#me-admin').textContent = u ? (S.admin ? 'sei admin' : `non admin (manca il documento admins/${u.uid})`) : '';
+  $('#me-admin').textContent = u && !u.isAnonymous ? (S.admin ? 'sei admin' : `non admin (manca il documento admins/${u.uid})`) : '';
   render();
   if (S.admin) seedOnce();
 });
@@ -182,14 +182,23 @@ function render() {
 
   // La mia squadra
   const u = S.user;
-  $('#auth-form').hidden = !!u;
-  $('#team-box').hidden = !u;
+  // Il giocatore "sono io" è il partecipante legato a questo telefono; le squadre hanno lo stesso id del partecipante.
+  const me = u && S.players.find(p => p.uid === u.uid);
+  const target = S.editing ?? me?.id;
+  $('#me-bar').hidden = !u;
+  $('#me-tech').hidden = !u || u.isAnonymous;
+  $('#admin-login').hidden = !!u;
+  $('#name-form').hidden = !!target;
+  $('#team-box').hidden = !target;
   if (u) {
-    $('#me-name').textContent = u.displayName || u.email;
+    $('#me-name').textContent = me?.name ?? u.displayName ?? u.email ?? '';
     $('#me-uid').textContent = u.uid;
-    const mine = S.teams.find(t => t.id === (S.editing ?? u.uid));
+  }
+  if (target) {
+    const mine = S.teams.find(t => t.id === target);
     $('#editing').hidden = !S.editing;
-    $('#editing-name').textContent = mine?.owner ?? '';
+    $('#editing-name').textContent = pname(target);
+    if (S.draftFor !== target) { S.draftFor = target; S.draft = null; $('#team-form').reset(); }
     if (!S.draft && mine) {
       S.draft = { members: mine.members.filter(id => ids.has(id)), captain: mine.captain };
       $('#team-form').tname.value = mine.name;
@@ -218,7 +227,11 @@ function render() {
   f.player.value = pv; f.rule.value = rv;
   const del = path => `<button type="button" data-del="${esc(path)}" aria-label="Elimina">✕</button>`;
   $('#ev-list').innerHTML = events.map(e => `<li class="row"><span class="grow">${esc(pname(e.playerId))}: ${esc(note(e))} <small>${time(e.at)} · ${esc(e.by)}</small></span>${fmt(e.points)}${del('events/' + e.id)}</li>`).join('');
-  $('#team-list').innerHTML = [...S.teams].sort(byName).map(t => `<li class="row"><span class="grow">${esc(t.name)} <small>di ${esc(t.owner)}</small></span><button type="button" data-edit="${esc(t.id)}">Modifica</button>${del('teams/' + t.id)}</li>`).join('') || '<li class="muted">Nessuna squadra ancora.</li>';
+  $('#team-list').innerHTML = players.map(p => {
+    const t = S.teams.find(t => t.id === p.id);
+    return `<li class="row">${avatar(p.name)}<span class="grow">${t ? `<b>${esc(t.name)}</b>` : '<i class="muted">nessuna squadra</i>'} <small>di ${esc(p.name)}${p.uid ? ' · entrato' : ''}</small></span>
+      <button type="button" data-edit="${esc(p.id)}">${t ? 'Modifica' : 'Crea'}</button>${t ? del('teams/' + t.id) : ''}</li>`;
+  }).join('');
   $('#player-list').innerHTML = players.map(p => `<li class="row">${avatar(p.name)}<span class="grow">${esc(p.name)}</span>${del('players/' + p.id)}</li>`).join('');
   $('#rule-list').innerHTML = rules.map(r => `<li class="row"><span class="grow">${r.secret ? '🤫 ' : ''}${esc(r.label)}</span>${rulePts(r)}<button type="button" data-editrule="${esc(rulePath(r))}">Modifica</button>${del(rulePath(r))}</li>`).join('');}
 setInterval(render, 30000); // aggiorna stato blocco/fine anche senza nuovi dati
@@ -250,7 +263,21 @@ $('#auth-form').addEventListener('submit', act(async e => {
     await signInWithEmailAndPassword(auth, email, pw);
   }
 }));
-$('#logout').addEventListener('click', () => signOut(auth));
+// Accesso giocatori col solo nome: login anonimo + il partecipante viene legato a questo telefono.
+// shortcut: chi conosce un nome può entrare al suo posto (scelta voluta, niente password); per bloccarlo servirebbe un PIN per giocatore.
+$('#name-form').addEventListener('submit', act(async e => {
+  e.preventDefault();
+  const p = S.players.find(p => slug(p.name) === slug(e.target.who.value));
+  if (!p) return alert("Nome non trovato: scrivilo esattamente come te l'hanno dato gli admin");
+  if (!auth.currentUser) await signInAnonymously(auth);
+  await updateDoc(doc(db, 'players', p.id), { uid: auth.currentUser.uid });
+  e.target.reset();
+}));
+$('#logout').addEventListener('click', act(async () => {
+  const me = S.players.find(p => p.uid === S.user?.uid);
+  if (me) await updateDoc(doc(db, 'players', me.id), { uid: null });
+  await signOut(auth);
+}));
 
 // Squadra
 $('#pick').addEventListener('change', e => {
@@ -267,9 +294,8 @@ $('#team-form').addEventListener('submit', act(async e => {
   if (!name) return alert('Dai un nome alla squadra');
   if (!d || d.members.length !== 5) return alert('Devi scegliere esattamente 5 giocatori');
   if (!d.captain) return alert('Scegli il capitano');
-  const id = S.editing ?? S.user.uid;
-  const owner = S.editing ? S.teams.find(t => t.id === id)?.owner : S.user.displayName;
-  await setDoc(doc(db, 'teams', id), { name, owner: (owner || 'Anonimo').slice(0, 40), members: d.members, captain: d.captain });
+  const id = S.draftFor, owner = S.players.find(p => p.id === id)?.name || 'Anonimo';
+  await setDoc(doc(db, 'teams', id), { name, owner: owner.slice(0, 40), members: d.members, captain: d.captain });
   alert('Squadra salvata!');
 }));
 
@@ -318,11 +344,13 @@ $('#rule-form').addEventListener('submit', act(async e => {
   await setDoc(doc(db, 'config', 'game'), { lockAt: Timestamp.fromDate(lockAt), endAt: Timestamp.fromDate(endAt) }, { merge: true });
   alert('Orari salvati');
 }));
-const editTeam = id => { S.editing = id; S.draft = null; $('#team-form').reset(); render(); };
+const editTeam = id => { S.editing = id; render(); };
 $('#stop-edit').addEventListener('click', () => editTeam(null));
 $('#tab-admin').addEventListener('click', act(async e => {
   const { edit, editrule, del: path } = e.target.dataset;
   if (edit) { editTeam(edit); $('[data-tab=squadra]').click(); }
   if (editrule) editRule(editrule);
-  if (path && confirm('Eliminare?')) await deleteDoc(doc(db, path));
+  if (!path || !confirm('Eliminare?')) return;
+  await deleteDoc(doc(db, path));
+  if (path.startsWith('players/')) await deleteDoc(doc(db, 'teams', path.slice(8))); // via anche la sua squadra
 }));

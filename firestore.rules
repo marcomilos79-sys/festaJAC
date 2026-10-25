@@ -21,16 +21,27 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Ogni utente ha una sola squadra (id = suo UID), modificabile solo prima del blocco.
-    match /teams/{uid} {
+    // Il partecipante è "mio" se è legato al mio login (accesso col nome).
+    function ownsPlayer(pid) { return signedIn() && get(/databases/$(db)/documents/players/$(pid)).data.get('uid', null) == request.auth.uid; }
+
+    // Ogni partecipante ha una sola squadra (id = id del partecipante), modificabile da lui solo prima del blocco.
+    match /teams/{pid} {
       allow read: if true;
       allow create, update: if isAdmin()
-        || (signedIn() && request.auth.uid == uid && beforeLock() && validTeam(request.resource.data));
+        || (ownsPlayer(pid) && beforeLock() && validTeam(request.resource.data));
       allow delete: if isAdmin();
     }
 
+    match /players/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+      // Accesso col nome: chi ha fatto login può legare un nome a sé, o liberare il proprio. Nient'altro.
+      allow update: if signedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uid'])
+        && (request.resource.data.uid == request.auth.uid
+            || (resource.data.get('uid', null) == request.auth.uid && request.resource.data.uid == null));
+    }
+
     match /config/{id}   { allow read: if true; allow write: if isAdmin(); }
-    match /players/{id}  { allow read: if true; allow write: if isAdmin(); }
     match /rules/{id}    { allow read: if true; allow write: if isAdmin(); }
     match /events/{id}   { allow read: if true; allow write: if isAdmin(); }
     match /secret/{id}   { allow read: if isAdmin() || revealed(); allow write: if isAdmin(); }
