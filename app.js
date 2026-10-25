@@ -212,7 +212,8 @@ function render() {
       $('#team-form').tname.value = mine.name;
     }
     const d = S.draft ?? { members: [], captain: null };
-    const can = ph === 'open' || S.admin, full = d.members.length >= 5;
+    const can = ph === 'open' || (S.admin && !!S.editing), // anche gli admin giocano: la propria squadra si blocca alle 20 come per tutti
+      full = d.members.length >= 5;
     $('#pick').innerHTML = players.map((p, i) => {
       const on = d.members.includes(p.id), dis = !can || (!on && full);
       return `<li class="row pick ${on ? 'on' : ''} ${dis ? 'dis' : ''}" style="--i:${i}">
