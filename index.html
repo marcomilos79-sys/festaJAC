@@ -96,8 +96,10 @@
       <li class="row">Bonus e malus li assegnano solo gli admin: quando succede qualcosa, chiamate uno di loro a vedere!</li>
       <li class="row">Gli sticker sono contati e diversi per ognuno: a fine gioco vengono ricontati e ogni sticker mancante conta come "attaccato in giro".</li>
     </ul>
-    <h2>Bonus e malus</h2>
-    <ul id="rules"></ul>
+    <h2>Bonus</h2>
+    <ul id="rules-bonus"></ul>
+    <h2>Malus</h2>
+    <ul id="rules-malus"></ul>
     <p id="secret-info" class="muted"></p>
   </section>
 
@@ -138,9 +140,7 @@
         <button class="primary" id="rule-save">Aggiungi regola</button>
         <button type="button" id="rule-cancel" hidden>Annulla</button>
       </div>
-    </form>
-    <button type="button" id="seed" hidden>Importa le regole del regolamento (+ 6 segrete da personalizzare)</button>
-    <ul id="rule-list"></ul>
+    </form>    <ul id="rule-list"></ul>
 
     <h2>Orari</h2>
     <form id="cfg-form">

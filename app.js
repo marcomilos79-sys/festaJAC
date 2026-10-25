@@ -1,6 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, signOut, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js';
-import { getFirestore, collection, doc, onSnapshot, getDoc, setDoc, addDoc, deleteDoc, serverTimestamp, Timestamp, writeBatch } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js';
+import { getFirestore, collection, doc, onSnapshot, getDoc, setDoc, addDoc, deleteDoc, serverTimestamp, Timestamp, runTransaction } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js';
 import { playerScores, memberScore, teamScore } from './score.js';
 
 const app = initializeApp({
@@ -17,7 +17,7 @@ const db = getFirestore(app);
 // editing = UID della squadra altrui che l'admin sta modificando; editRule = percorso della regola in modifica
 const S = { user: null, admin: false, players: [], rules: [], secret: [], events: [], teams: [], cfg: {}, draft: null, editing: null, editRule: null };
 
-// Regolamento di base, importabile con un clic dalla tab Admin. [testo, punti, tuttiIPunti]
+// Regolamento di base, caricato in automatico la prima volta che un admin apre l'app. [testo, punti, tuttiIPunti]
 const BASE_RULES = [
   ['Selfie con almeno 5 persone (non valgono le foto di gruppo con la torta)', 20],
   ['Selfie: ogni sconosciuto nella foto', 5],
@@ -72,7 +72,30 @@ onAuthStateChanged(auth, async u => {
   if (u) S.admin = await getDoc(doc(db, 'admins', u.uid)).then(d => d.exists(), e => (console.error(e), false));
   $('#me-admin').textContent = u ? (S.admin ? 'sei admin' : `non admin (manca il documento admins/${u.uid})`) : '';
   render();
+  if (S.admin) seedOnce();
 });
+
+// Carica regolamento + 6 regole segrete una volta sola: il flag in config/game evita doppioni anche con due admin.
+let seeding = false;
+async function seedOnce() {
+  if (seeding) return;
+  seeding = true;
+  try {
+    await runTransaction(db, async tx => {
+      const cfg = doc(db, 'config', 'game');
+      if ((await tx.get(cfg)).data()?.seeded) return;
+      for (const [label, points, all] of BASE_RULES) tx.set(doc(collection(db, 'rules')), all ? { label, points, all } : { label, points });
+      for (let i = 1; i <= 3; i++) {
+        tx.set(doc(collection(db, 'secret')), { label: `Bonus segreto ${i} (da modificare)`, points: 20 });
+        tx.set(doc(collection(db, 'secret')), { label: `Malus segreto ${i} (da modificare)`, points: -20 });
+      }
+      tx.set(cfg, { seeded: true }, { merge: true });
+    });
+  } catch (e) {
+    seeding = false;
+    $('#me-admin').textContent += ` · caricamento regole fallito (${e.code}): hai pubblicato firestore.rules?`;
+  }
+}
 
 // Regole segrete: il database le dà solo agli admin, e a tutti da un'ora prima della fine.
 let stopSecret = null;
@@ -131,7 +154,9 @@ function render() {
       <ul>${events.filter(e => e.playerId === p.id).map(e => `<li><span class="grow">${esc(note(e))} <small>${time(e.at)}</small></span>${fmt(e.points)}</li>`).join('') || '<li class="muted">Ancora niente.</li>'}</ul>
     </details></li>`).join('') || '<li class="muted">Nessun partecipante ancora.</li>';
 
-  $('#rules').innerHTML = rules.map(r => `<li class="row"><span class="grow">${r.secret ? '🤫 ' : ''}${esc(r.label)}</span>${rulePts(r)}</li>`).join('') || '<li class="muted">Ancora da definire.</li>';
+  const ruleRow = r => `<li class="row"><span class="grow">${r.secret ? '🤫 ' : ''}${esc(r.label)}</span>${rulePts(r)}</li>`;
+  $('#rules-bonus').innerHTML = rules.filter(r => r.points > 0).map(ruleRow).join('') || '<li class="muted">Ancora da definire.</li>';
+  $('#rules-malus').innerHTML = rules.filter(r => r.points <= 0).map(ruleRow).join('') || '<li class="muted">Ancora da definire.</li>';
   $('#secret-info').textContent = Date.now() >= revealAt()
     ? '🤫 = regola segreta, ora svelata!'
     : `🤫 Ci sono bonus e malus segreti: verranno svelati ${when(S.cfg.endAt && new Date(revealAt()))}.`;
@@ -176,9 +201,7 @@ function render() {
   $('#ev-list').innerHTML = events.map(e => `<li class="row"><span class="grow">${esc(pname(e.playerId))}: ${esc(note(e))} <small>${time(e.at)} · ${esc(e.by)}</small></span>${fmt(e.points)}${del('events/' + e.id)}</li>`).join('');
   $('#team-list').innerHTML = [...S.teams].sort(byName).map(t => `<li class="row"><span class="grow">${esc(t.name)} <small>di ${esc(t.owner)}</small></span><button type="button" data-edit="${esc(t.id)}">Modifica</button>${del('teams/' + t.id)}</li>`).join('') || '<li class="muted">Nessuna squadra ancora.</li>';
   $('#player-list').innerHTML = players.map(p => `<li class="row"><span class="grow">${esc(p.name)}</span>${del('players/' + p.id)}</li>`).join('');
-  $('#rule-list').innerHTML = rules.map(r => `<li class="row"><span class="grow">${r.secret ? '🤫 ' : ''}${esc(r.label)}</span>${rulePts(r)}<button type="button" data-editrule="${esc(rulePath(r))}">Modifica</button>${del(rulePath(r))}</li>`).join('');
-  $('#seed').hidden = rules.length > 0;
-}
+  $('#rule-list').innerHTML = rules.map(r => `<li class="row"><span class="grow">${r.secret ? '🤫 ' : ''}${esc(r.label)}</span>${rulePts(r)}<button type="button" data-editrule="${esc(rulePath(r))}">Modifica</button>${del(rulePath(r))}</li>`).join('');}
 setInterval(render, 30000); // aggiorna stato blocco/fine anche senza nuovi dati
 
 // Navigazione
@@ -269,21 +292,11 @@ $('#rule-form').addEventListener('submit', act(async e => {
   if (S.editRule) await setDoc(doc(db, S.editRule), data, { merge: true });
   else await addDoc(collection(db, f.secret.checked ? 'secret' : 'rules'), data);
   editRule(null);
-}));
-$('#seed').addEventListener('click', act(async () => {
-  const b = writeBatch(db);
-  for (const [label, points, all] of BASE_RULES) b.set(doc(collection(db, 'rules')), all ? { label, points, all } : { label, points });
-  for (let i = 1; i <= 3; i++) {
-    b.set(doc(collection(db, 'secret')), { label: `Bonus segreto ${i} (da modificare)`, points: 20 });
-    b.set(doc(collection(db, 'secret')), { label: `Malus segreto ${i} (da modificare)`, points: -20 });
-  }
-  await b.commit();
-}));
-$('#cfg-form').addEventListener('submit', act(async e => {
+}));$('#cfg-form').addEventListener('submit', act(async e => {
   e.preventDefault();
   const f = e.target, lockAt = new Date(f.lockAt.value), endAt = new Date(f.endAt.value);
   if (endAt <= lockAt) return alert('La fine del gioco deve venire dopo il blocco squadre');
-  await setDoc(doc(db, 'config', 'game'), { lockAt: Timestamp.fromDate(lockAt), endAt: Timestamp.fromDate(endAt) });
+  await setDoc(doc(db, 'config', 'game'), { lockAt: Timestamp.fromDate(lockAt), endAt: Timestamp.fromDate(endAt) }, { merge: true });
   alert('Orari salvati');
 }));
 const editTeam = id => { S.editing = id; S.draft = null; $('#team-form').reset(); render(); };
