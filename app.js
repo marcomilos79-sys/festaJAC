@@ -61,7 +61,14 @@ const when = t => t ? (t.toDate?.() ?? t).toLocaleString('it-IT', { weekday: 'lo
 const time = ts => ts ? ts.toDate().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : 'ora';
 const toInput = ts => { if (!ts) return ''; const d = ts.toDate(); return new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 16); };
 const byName = (a, b) => a.name.localeCompare(b.name);
-const act = fn => async (...a) => { try { await fn(...a); } catch (e) { alert('Errore: ' + (e.code || e.message)); } };
+const toast = msg => {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => t.classList.remove('show'), 3200);
+};
+const act = fn => async (...a) => { try { await fn(...a); } catch (e) { toast('Errore: ' + (e.code || e.message)); } };
 const dbError = e => { $('#status').textContent = 'Errore database: ' + e.code; };
 
 // Dati live: ogni modifica degli admin arriva subito a tutti.
@@ -162,18 +169,19 @@ function render() {
 
   const teams = S.teams.map(t => ({ ...t, pts: teamScore(t, sc) })).sort((a, b) => b.pts - a.pts);
   $('#lb-teams').innerHTML = teams.map((t, i) => `
-    <li><details data-id="t${t.id}" ${isOpen('t' + t.id)}>
-      <summary><span class="rank">${i + 1}</span><span class="grow"><b>${esc(t.name)}</b> <small>di ${esc(t.owner)}</small></span>${fmt(t.pts)}</summary>
-      <ul>${t.members.map(id => `<li>${avatar(pname(id))}<span class="grow">${esc(pname(id))}${id === t.captain ? ' <b>©</b>' : ''}</span>${fmt(memberScore(t, id, sc))}</li>`).join('')}</ul>
+    <li style="--i:${i}"><details data-id="t${t.id}" ${isOpen('t' + t.id)}>
+      <summary><span class="rank r${i + 1}">${i + 1}</span><span class="grow"><span class="tname">${esc(t.name)}</span><small>di ${esc(t.owner)}</small>
+        <span class="stack">${t.members.map(id => avatar(pname(id))).join('')}</span></span>${fmt(t.pts)}</summary>
+      <ul>${t.members.map(id => `<li>${avatar(pname(id))}<span class="grow">${esc(pname(id))}${id === t.captain ? '<b class="cap-tag" title="Capitano">C</b>' : ''}</span>${fmt(memberScore(t, id, sc))}</li>`).join('')}</ul>
     </details></li>`).join('') || '<li class="muted">Nessuna squadra ancora.</li>';
 
   $('#lb-players').innerHTML = [...players].sort((a, b) => (sc[b.id] || 0) - (sc[a.id] || 0)).map((p, i) => `
-    <li><details data-id="p${p.id}" ${isOpen('p' + p.id)}>
-      <summary><span class="rank">${i + 1}</span>${avatar(p.name)}<span class="grow">${esc(p.name)}</span>${fmt(sc[p.id] || 0)}</summary>
+    <li style="--i:${i}"><details data-id="p${p.id}" ${isOpen('p' + p.id)}>
+      <summary><span class="rank r${i + 1}">${i + 1}</span>${avatar(p.name)}<span class="grow">${esc(p.name)}</span>${fmt(sc[p.id] || 0)}</summary>
       <ul>${events.filter(e => e.playerId === p.id).map(e => `<li><span class="grow">${esc(note(e))} <small>${time(e.at)}</small></span>${fmt(e.points)}</li>`).join('') || '<li class="muted">Ancora niente.</li>'}</ul>
     </details></li>`).join('') || '<li class="muted">Nessun partecipante ancora.</li>';
 
-  const ruleRow = r => `<li class="row"><span class="grow">${r.secret ? '🤫 ' : ''}${esc(r.label)}</span>${rulePts(r)}</li>`;
+  const ruleRow = (r, i) => `<li class="row" style="--i:${i}"><span class="grow">${r.secret ? '🤫 ' : ''}${esc(r.label)}</span>${rulePts(r)}</li>`;
   $('#rules-bonus').innerHTML = rules.filter(r => r.points > 0).map(ruleRow).join('') || '<li class="muted">Ancora da definire.</li>';
   $('#rules-malus').innerHTML = rules.filter(r => r.points <= 0).map(ruleRow).join('') || '<li class="muted">Ancora da definire.</li>';
   $('#secret-info').textContent = Date.now() >= revealAt()
@@ -205,15 +213,17 @@ function render() {
     }
     const d = S.draft ?? { members: [], captain: null };
     const can = ph === 'open' || S.admin, full = d.members.length >= 5;
-    $('#pick').innerHTML = players.map(p => {
-      const on = d.members.includes(p.id);
-      return `<li class="row">
-        <label class="grow"><input type="checkbox" data-m="${esc(p.id)}" ${on ? 'checked' : ''} ${!can || (!on && full) ? 'disabled' : ''}>${avatar(p.name)}${esc(p.name)}</label>
-        <label>© <input type="radio" name="cap" data-c="${esc(p.id)}" aria-label="Capitano: ${esc(p.name)}" ${d.captain === p.id ? 'checked' : ''} ${!can || !on ? 'disabled' : ''}></label>
+    $('#pick').innerHTML = players.map((p, i) => {
+      const on = d.members.includes(p.id), dis = !can || (!on && full);
+      return `<li class="row pick ${on ? 'on' : ''} ${dis ? 'dis' : ''}" style="--i:${i}">
+        <label class="grow"><input type="checkbox" class="sr" data-m="${esc(p.id)}" ${on ? 'checked' : ''} ${dis ? 'disabled' : ''}>
+          <span class="tick" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>${avatar(p.name)}<span class="grow">${esc(p.name)}</span></label>
+        <label class="cap" title="Capitano"><input type="radio" class="sr" name="cap" data-c="${esc(p.id)}" aria-label="Capitano: ${esc(p.name)}" ${d.captain === p.id ? 'checked' : ''} ${!can || !on ? 'disabled' : ''}><span aria-hidden="true">C</span></label>
       </li>`;
     }).join('') || '<li class="muted">Gli admin non hanno ancora inserito i partecipanti.</li>';
-    $('#pick-info').textContent = `${d.members.length}/5 scelti` + (d.captain ? '' : ' · manca il capitano')
-      + (can ? '' : ph === 'unset' ? ' · gli admin devono ancora aprire le squadre' : ' · squadre bloccate');
+    $('#pick-info').innerHTML = `<span class="slots" aria-hidden="true">${[0, 1, 2, 3, 4].map(n => `<i class="${n < d.members.length ? 'on' : ''}"></i>`).join('')}</span>`
+      + esc(`${d.members.length}/5` + (d.captain ? ' · capitano scelto' : ' · manca il capitano')
+      + (can ? '' : ph === 'unset' ? ' · gli admin devono ancora aprire le squadre' : ' · squadre bloccate'));
     $('#team-form').tname.disabled = !can;
     $('#team-form').querySelector('button').disabled = !can;
   }
@@ -237,11 +247,16 @@ function render() {
 setInterval(render, 30000); // aggiorna stato blocco/fine anche senza nuovi dati
 
 // Navigazione
+// L'animazione d'ingresso parte solo quando apri una sezione, non a ogni aggiornamento live.
+const animate = sec => { sec.classList.add('enter'); clearTimeout(sec.t); sec.t = setTimeout(() => sec.classList.remove('enter'), 900); };
+setTimeout(() => $('#tab-classifica').classList.remove('enter'), 1500);
 $('nav').addEventListener('click', e => {
-  const t = e.target.dataset.tab;
-  if (!t) return;
-  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b === e.target));
-  document.querySelectorAll('main > section').forEach(s => s.hidden = s.id !== 'tab-' + t);
+  const btn = e.target.closest('[data-tab]');
+  if (!btn) return;
+  document.querySelectorAll('nav button').forEach(b => { b.classList.toggle('on', b === btn); b.toggleAttribute('aria-current', b === btn); });
+  document.querySelectorAll('main > section').forEach(s => s.hidden = s.id !== 'tab-' + btn.dataset.tab);
+  animate($('#tab-' + btn.dataset.tab));
+  scrollTo({ top: 0 });
 });
 
 // Accesso
@@ -249,13 +264,13 @@ $('#auth-form').addEventListener('submit', act(async e => {
   e.preventDefault();
   const f = e.target, email = f.email.value.trim(), pw = f.password.value, mode = e.submitter?.value;
   if (mode === 'reset') {
-    if (!email) return alert('Scrivi prima la tua email');
+    if (!email) return toast('Scrivi prima la tua email');
     await sendPasswordResetEmail(auth, email);
-    return alert('Ti abbiamo mandato una email per reimpostare la password');
+    return toast('Ti abbiamo mandato una email per reimpostare la password');
   }
   if (mode === 'signup') {
     const nick = f.nick.value.trim();
-    if (!nick) return alert('Scrivi il tuo nome');
+    if (!nick) return toast('Scrivi il tuo nome');
     const { user } = await createUserWithEmailAndPassword(auth, email, pw);
     await updateProfile(user, { displayName: nick });
     render();
@@ -268,7 +283,7 @@ $('#auth-form').addEventListener('submit', act(async e => {
 $('#name-form').addEventListener('submit', act(async e => {
   e.preventDefault();
   const p = S.players.find(p => slug(p.name) === slug(e.target.who.value));
-  if (!p) return alert("Nome non trovato: scrivilo esattamente come te l'hanno dato gli admin");
+  if (!p) return toast("Nome non trovato: scrivilo esattamente come te l'hanno dato gli admin");
   if (!auth.currentUser) await signInAnonymously(auth);
   await updateDoc(doc(db, 'players', p.id), { uid: auth.currentUser.uid });
   e.target.reset();
@@ -291,12 +306,12 @@ $('#pick').addEventListener('change', e => {
 $('#team-form').addEventListener('submit', act(async e => {
   e.preventDefault();
   const d = S.draft, name = e.target.tname.value.trim();
-  if (!name) return alert('Dai un nome alla squadra');
-  if (!d || d.members.length !== 5) return alert('Devi scegliere esattamente 5 giocatori');
-  if (!d.captain) return alert('Scegli il capitano');
+  if (!name) return toast('Dai un nome alla squadra');
+  if (!d || d.members.length !== 5) return toast('Devi scegliere esattamente 5 giocatori');
+  if (!d.captain) return toast('Scegli il capitano');
   const id = S.draftFor, owner = S.players.find(p => p.id === id)?.name || 'Anonimo';
   await setDoc(doc(db, 'teams', id), { name, owner: owner.slice(0, 40), members: d.members, captain: d.captain });
-  alert('Squadra salvata!');
+  toast('Squadra salvata!');
 }));
 
 // Admin
@@ -340,9 +355,9 @@ $('#rule-form').addEventListener('submit', act(async e => {
 }));$('#cfg-form').addEventListener('submit', act(async e => {
   e.preventDefault();
   const f = e.target, lockAt = new Date(f.lockAt.value), endAt = new Date(f.endAt.value);
-  if (endAt <= lockAt) return alert('La fine del gioco deve venire dopo il blocco squadre');
+  if (endAt <= lockAt) return toast('La fine del gioco deve venire dopo il blocco squadre');
   await setDoc(doc(db, 'config', 'game'), { lockAt: Timestamp.fromDate(lockAt), endAt: Timestamp.fromDate(endAt) }, { merge: true });
-  alert('Orari salvati');
+  toast('Orari salvati');
 }));
 const editTeam = id => { S.editing = id; render(); };
 $('#stop-edit').addEventListener('click', () => editTeam(null));

@@ -2,77 +2,203 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d0a18">
 <title>FantaLaurea</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#14111f; --card:#211c33; --line:#3a3254; --text:#f3f0ff; --muted:#a59cc4; --acc:#ffcc33; --plus:#4ade80; --minus:#f87171; }
-  * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.4 system-ui, sans-serif; }
-  header, main { max-width:640px; margin:0 auto; padding:16px; }
-  header { padding-bottom:0; }
-  h1 { margin:0; color:var(--acc); }
-  h2 { font-size:1.1rem; margin:24px 0 8px; }
-  #status { color:var(--muted); margin:4px 0 12px; }
-  nav { display:flex; gap:6px; max-width:640px; margin:0 auto; padding:0 16px; overflow-x:auto; }
-  nav button { flex:1; }
-  button { background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:10px 12px; font:inherit; cursor:pointer; }
-  button.on, button.primary { background:var(--acc); color:#000; border-color:var(--acc); }
-  input, select { width:100%; background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:10px; font:inherit; margin:4px 0 10px; }
-  input[type=checkbox], input[type=radio] { width:22px; height:22px; margin:0; accent-color:var(--acc); }
-  label { color:var(--muted); font-size:.9rem; }
-  form, details, .row { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px; margin:8px 0; }
-  ol, ul { list-style:none; padding:0; margin:0; }
-  summary { cursor:pointer; display:flex; gap:8px; align-items:baseline; }
-  details ul { margin-top:8px; }
-  details li, .row { display:flex; gap:8px; align-items:center; padding:6px 0; border-top:1px solid var(--line); }
-  .row { padding:8px 12px; border-top:1px solid var(--line); }
-  .grow { flex:1; min-width:0; }
-  label.grow { display:flex; gap:8px; align-items:center; }
-  .av { width:32px; height:32px; border-radius:50%; flex:none; object-fit:cover; display:inline-grid; place-items:center; background:var(--line); color:var(--acc); font-weight:700; }
-  .pts { margin-left:auto; font-weight:700; white-space:nowrap; }
-  .plus { color:var(--plus); } .minus { color:var(--minus); }
+  :root {
+    --bg:#0d0a18; --card:#18132c; --card2:#221b3d; --line:#30285a; --text:#f6f3ff; --muted:#b3abd3;
+    --gold:#ffc83d; --gold2:#ff9f1c; --pink:#ff4d8d; --plus:#3ddc97; --minus:#ff6b7a; --on-gold:#1d1300;
+    --r:18px; --r-sm:12px; --nav-h:68px;
+    --ease:cubic-bezier(.2,.8,.2,1); --spring:cubic-bezier(.34,1.56,.64,1); --t-fast:140ms; --t:240ms;
+    --head:'Fredoka', system-ui, sans-serif; --body:'Nunito', system-ui, sans-serif;
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html { color-scheme:dark; }
+  body {
+    margin:0; min-height:100dvh; color:var(--text); font:16px/1.5 var(--body);
+    background:
+      radial-gradient(900px 500px at 0% -10%, #4a1f8a66, transparent 70%),
+      radial-gradient(700px 420px at 110% 0%, #ff4d8d33, transparent 70%),
+      radial-gradient(600px 400px at 50% 110%, #ffc83d1f, transparent 70%),
+      var(--bg);
+    background-attachment:fixed;
+  }
+  header, main { max-width:560px; margin:0 auto; padding:0 16px; }
+  header { padding-top:calc(20px + env(safe-area-inset-top)); }
+  main { padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 32px); }
+
+  /* Brand */
+  .brand { display:flex; align-items:center; gap:12px; }
+  .logo { width:48px; height:48px; border-radius:14px; display:grid; place-items:center; color:var(--on-gold);
+    background:linear-gradient(135deg, var(--gold), var(--gold2)); box-shadow:0 8px 24px #ff9f1c40; animation:bob 4s ease-in-out infinite; }
+  .logo .ic { width:28px; height:28px; }
+  h1 { margin:0; font:700 1.9rem/1 var(--head); letter-spacing:.3px;
+    background:linear-gradient(90deg, var(--gold), #fff2c4 45%, var(--pink)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .tagline { margin:2px 0 0; color:var(--muted); font-size:.9rem; }
+  #status { display:inline-flex; align-items:center; gap:8px; margin:16px 0 4px; padding:8px 14px; border-radius:999px;
+    background:var(--card); border:1px solid var(--line); font-size:.9rem; font-weight:700; }
+  #status::before { content:''; width:8px; height:8px; border-radius:50%; background:var(--plus); box-shadow:0 0 0 0 #3ddc9799; animation:pulse 2s infinite; }
+
+  h2 { font:600 1.25rem/1.2 var(--head); margin:28px 0 12px; }
+  h3 { font:600 1.05rem var(--head); margin:20px 0 8px; color:var(--muted); }
+  p { margin:8px 0; }
   small, .muted { color:var(--muted); }
-  .rank { color:var(--acc); font-weight:700; min-width:1.6em; }
-  .two { display:flex; gap:8px; } .two > * { flex:1; }
-  code { word-break:break-all; }
+  .hint { color:var(--muted); font-size:.9rem; margin:-4px 0 12px; }
+
+  /* Icone */
+  .ic { width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex:none; }
+  button svg { pointer-events:none; }
+
+  /* Bottoni */
+  button { font:700 1rem var(--body); color:var(--text); background:var(--card2); border:1px solid var(--line); border-radius:var(--r-sm);
+    min-height:48px; padding:10px 16px; cursor:pointer; transition:transform var(--t-fast) var(--ease), background var(--t) var(--ease), border-color var(--t), opacity var(--t); }
+  button:active:not(:disabled) { transform:scale(.96); }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  button.primary { width:100%; border:0; color:var(--on-gold); background:linear-gradient(135deg, var(--gold), var(--gold2)); box-shadow:0 6px 20px #ff9f1c33; }
+  .row button, summary button { min-height:44px; min-width:44px; padding:8px 12px; font-size:.9rem; }
+  [data-del] { color:var(--minus); background:transparent; border-color:transparent; }
+  :focus-visible { outline:3px solid var(--gold); outline-offset:2px; }
+
+  /* Form */
+  label { display:block; color:var(--muted); font-size:.9rem; font-weight:700; }
+  input, select { display:block; width:100%; min-height:48px; margin:6px 0 14px; padding:12px 14px; font:600 16px var(--body); color:var(--text);
+    background:#0f0b1e; border:1.5px solid var(--line); border-radius:var(--r-sm); transition:border-color var(--t), box-shadow var(--t); }
+  input:focus, select:focus { outline:none; border-color:var(--gold); box-shadow:0 0 0 4px #ffc83d26; }
+  input[type=checkbox]:not(.sr) { display:inline-block; width:22px; min-height:0; height:22px; margin:0 8px 0 0; vertical-align:middle; accent-color:var(--gold); }
+  .two { display:flex; gap:10px; } .two > * { flex:1; min-width:0; }
+
+  /* Card */
+  form, details, .card { background:linear-gradient(180deg, var(--card2), var(--card)); border:1px solid var(--line); border-radius:var(--r); padding:16px; margin:12px 0; }
+  ol, ul { list-style:none; padding:0; margin:0; }
+  li.muted { text-align:center; padding:28px 16px; border:1.5px dashed var(--line); border-radius:var(--r); }
+  .row { display:flex; gap:12px; align-items:center; padding:10px 14px; margin:8px 0; min-height:56px;
+    background:var(--card); border:1px solid var(--line); border-radius:var(--r-sm); }
+  .grow { flex:1; min-width:0; overflow-wrap:anywhere; }
+  label.grow { display:flex; gap:12px; align-items:center; color:var(--text); font-size:1rem; cursor:pointer; }
+
+  /* Classifiche */
+  ol > li { margin:10px 0; }
+  ol details { margin:0; padding:0; overflow:hidden; transition:border-color var(--t); }
+  ol details[open] { border-color:#ffc83d66; }
+  summary { display:flex; gap:12px; align-items:center; padding:12px 14px; min-height:64px; cursor:pointer; list-style:none; }
+  summary::-webkit-details-marker { display:none; }
+  summary::after { content:''; width:8px; height:8px; flex:none; border-right:2px solid var(--muted); border-bottom:2px solid var(--muted); transform:rotate(45deg); transition:transform var(--t) var(--ease); margin:0 4px 4px 0; }
+  details[open] > summary::after { transform:rotate(225deg); margin:4px 4px 0 0; }
+  details > ul { padding:4px 14px 12px; animation:fold var(--t) var(--ease); }
+  details > ul > li { display:flex; gap:12px; align-items:center; padding:8px 0; border-top:1px solid var(--line); }
+  #admin-login > summary { min-height:48px; padding:0; color:var(--muted); font-weight:700; }
+  #admin-login[open] > summary { margin-bottom:12px; }
+
+  .rank { width:34px; height:34px; flex:none; display:grid; place-items:center; border-radius:50%; font:700 1rem var(--head); color:var(--muted); background:#ffffff0d; }
+  .r1 { color:var(--on-gold); background:linear-gradient(135deg, #ffe17a, #ffb31a); box-shadow:0 0 18px #ffc83d66; }
+  .r2 { color:#16161f; background:linear-gradient(135deg, #f1f1f6, #a9adbb); }
+  .r3 { color:#2a1405; background:linear-gradient(135deg, #f0b27a, #b8692e); }
+  ol > li:first-child details { border-color:#ffc83d55; box-shadow:0 10px 30px #ffc83d14; }
+  .tname { font:600 1.1rem/1.2 var(--head); display:block; }
+  .stack { display:flex; margin-top:6px; }
+  .stack .av { width:24px; height:24px; font-size:.7rem; border:2px solid var(--card); margin-left:-6px; }
+  .stack .av:first-child { margin-left:0; }
+
+  .av { width:40px; height:40px; border-radius:50%; flex:none; object-fit:cover; display:inline-grid; place-items:center;
+    background:linear-gradient(135deg, #3a2f6b, #5b2a6e); color:var(--gold); font:700 1rem var(--head); }
+  .pts { margin-left:auto; padding:4px 10px; border-radius:999px; font:700 .95rem var(--head); white-space:nowrap; font-variant-numeric:tabular-nums; background:#ffffff10; }
+  .plus { color:var(--plus); background:#3ddc971a; } .minus { color:var(--minus); background:#ff6b7a1a; }
+  b.cap-tag { display:inline-grid; place-items:center; width:20px; height:20px; margin-left:6px; border-radius:50%; font:700 .7rem var(--head); color:var(--on-gold); background:var(--gold); vertical-align:middle; }
+
+  /* Scelta squadra */
+  .sr { position:absolute; opacity:0; width:1px; height:1px; pointer-events:none; }
+  .pick { transition:border-color var(--t), background var(--t), opacity var(--t); }
+  .pick.on { border-color:var(--gold); background:linear-gradient(90deg, #ffc83d14, var(--card)); }
+  .pick.dis { opacity:.45; }
+  .tick { width:28px; height:28px; flex:none; border-radius:50%; display:grid; place-items:center; border:2px solid var(--line); color:var(--on-gold); transition:background var(--t) var(--ease), border-color var(--t); }
+  .tick .ic { width:16px; height:16px; stroke-width:3; opacity:0; transform:scale(.4); transition:transform var(--t) var(--spring), opacity var(--t-fast); }
+  .pick.on .tick { background:var(--gold); border-color:var(--gold); }
+  .pick.on .tick .ic { opacity:1; transform:scale(1); }
+  .sr:focus-visible + .tick, .sr:focus-visible + span { outline:3px solid var(--gold); outline-offset:2px; }
+  .cap { display:grid; place-items:center; width:48px; height:48px; flex:none; cursor:pointer; }
+  .cap span { width:36px; height:36px; display:grid; place-items:center; border-radius:50%; border:2px solid var(--line); font:700 .95rem var(--head); color:var(--muted); transition:all var(--t) var(--spring); }
+  .cap input:checked + span { background:linear-gradient(135deg, var(--gold), var(--gold2)); color:var(--on-gold); border-color:transparent; transform:scale(1.08); box-shadow:0 0 16px #ffc83d66; }
+  .cap input:disabled + span { opacity:.3; }
+  #pick-info { display:flex; align-items:center; gap:10px; font-weight:700; color:var(--muted); }
+  .slots { display:flex; gap:6px; }
+  .slots i { width:12px; height:12px; border-radius:50%; background:var(--line); transition:background var(--t), transform var(--t) var(--spring); }
+  .slots i.on { background:var(--gold); transform:scale(1.15); }
+  .team-name input { font:600 1.2rem var(--head); }
+  ::placeholder { color:#6f6894; opacity:1; }
+  #team-form > button.primary { position:sticky; bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 12px); margin-top:8px; }
+
+  #me-bar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  #me-bar .grow b { font:600 1.1rem var(--head); }
+  code { font-size:.8rem; word-break:break-all; }
+
+  /* Navigazione in basso */
+  nav { position:fixed; z-index:10; left:0; right:0; bottom:0; display:flex; justify-content:center; gap:4px;
+    padding:8px 8px calc(8px + env(safe-area-inset-bottom)); background:#0d0a18d9; backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border-top:1px solid var(--line); }
+  nav button { flex:1; max-width:110px; min-height:52px; display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 4px;
+    background:transparent; border:0; color:var(--muted); font-size:.75rem; }
+  nav button .ic { padding:2px 14px; width:52px; height:28px; border-radius:999px; transition:background var(--t) var(--ease), color var(--t); }
+  nav button.on { color:var(--text); }
+  nav button.on .ic { background:linear-gradient(135deg, var(--gold), var(--gold2)); color:var(--on-gold); }
+
+  /* Notifiche */
+  #toast { position:fixed; z-index:20; left:50%; bottom:calc(var(--nav-h) + env(safe-area-inset-bottom) + 16px); max-width:calc(100% - 32px);
+    padding:12px 18px; border-radius:var(--r-sm); background:#fff; color:#1a1530; font-weight:700; box-shadow:0 12px 32px #0008;
+    transform:translate(-50%, 20px); opacity:0; pointer-events:none; transition:transform var(--t) var(--spring), opacity var(--t); }
+  #toast.show { transform:translate(-50%, 0); opacity:1; }
+
+  /* Animazioni d'ingresso (solo al cambio tab, non a ogni aggiornamento live) */
+  .enter > *, .enter li { animation:rise .42s var(--ease) both; animation-delay:calc(min(var(--i, 0), 10) * 40ms); }
+  @keyframes rise { from { opacity:0; transform:translateY(14px); } }
+  @keyframes fold { from { opacity:0; transform:translateY(-6px); } }
+  @keyframes pulse { 70% { box-shadow:0 0 0 8px #3ddc9700; } 100% { box-shadow:0 0 0 0 #3ddc9700; } }
+  @keyframes bob { 50% { transform:translateY(-3px) rotate(-4deg); } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation:none !important; transition:none !important; } }
+
   [hidden] { display:none !important; }
 </style>
 </head>
 <body>
 <header>
-  <h1>🎓 FantaLaurea</h1>
-  <p id="status">Caricamento…</p>
+  <div class="brand">
+    <div class="logo" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg></div>
+    <div>
+      <h1>FantaLaurea</h1>
+      <p class="tagline">Schiera la squadra, fai punti, vinci la festa</p>
+    </div>
+  </div>
+  <p id="status" role="status">Caricamento…</p>
 </header>
-<nav>
-  <button data-tab="classifica" class="on">Squadre</button>
-  <button data-tab="giocatori">Giocatori</button>
-  <button data-tab="squadra">La mia squadra</button>
-  <button data-tab="regole">Regole</button>
-  <button data-tab="admin" hidden>Admin</button>
-</nav>
+
 <main>
-  <section id="tab-classifica">
+  <section id="tab-classifica" class="enter">
     <h2>Classifica squadre</h2>
     <ol id="lb-teams"></ol>
   </section>
 
   <section id="tab-giocatori" hidden>
     <h2>Classifica giocatori</h2>
-    <p class="muted">Tocca un giocatore per vedere bonus e malus.</p>
+    <p class="hint">Tocca un giocatore per vedere bonus e malus.</p>
     <ol id="lb-players"></ol>
   </section>
 
   <section id="tab-squadra" hidden>
-    <p id="me-bar" hidden>Ciao <b id="me-name"></b> · <button id="logout">Esci</button><br>
-      <small id="me-tech">UID: <code id="me-uid"></code> · <span id="me-admin"></span></small></p>
+    <div id="me-bar" class="card" hidden>
+      <span class="grow">Ciao <b id="me-name"></b><br><small id="me-tech">UID: <code id="me-uid"></code> · <span id="me-admin"></span></small></span>
+      <button id="logout">Esci</button>
+    </div>
 
     <form id="name-form" hidden>
-      <label>Il tuo nome, esattamente come te l'hanno dato gli admin<input name="who" required autocomplete="off" maxlength="40"></label>
+      <h2 style="margin-top:0">Entra nel gioco</h2>
+      <label>Il tuo nome, esattamente come te l'hanno dato gli admin<input name="who" required autocomplete="off" maxlength="40" enterkeyhint="go"></label>
       <button class="primary">Entra</button>
     </form>
 
     <details id="admin-login" hidden><summary>Accesso admin</summary>
-    <form id="auth-form">
+    <form id="auth-form" style="margin:0;padding:0;border:0;background:none">
       <label>Email<input name="email" type="email" required autocomplete="email"></label>
       <label>Password (min 6 caratteri)<input name="password" type="password" required minlength="6" autocomplete="current-password"></label>
       <label>Il tuo nome (solo per registrarti)<input name="nick" maxlength="40" autocomplete="name"></label>
@@ -85,12 +211,12 @@
     </details>
 
     <div id="team-box" hidden>
-      <p id="editing" class="row" hidden><span class="grow">Admin: stai modificando la squadra di <b id="editing-name"></b></span><button type="button" id="stop-edit">Torna alla mia</button></p>
+      <div id="editing" class="row" hidden><span class="grow">Admin: stai modificando la squadra di <b id="editing-name"></b></span><button type="button" id="stop-edit">Torna alla mia</button></div>
       <form id="team-form">
-        <label>Nome squadra<input name="tname" maxlength="40" required></label>
-        <p class="muted">Scegli 5 giocatori (✓) e il capitano (©, punti e malus doppi).</p>
+        <label class="team-name">Nome squadra<input name="tname" maxlength="40" required placeholder="Es. I Dottori del Caos"></label>
+        <p class="hint">Tocca 5 giocatori e scegli il capitano con la <b>C</b>: prende punti e malus doppi.</p>
+        <p id="pick-info"></p>
         <ul id="pick"></ul>
-        <p id="pick-info" class="muted"></p>
         <button class="primary">Salva squadra</button>
       </form>
     </div>
@@ -110,7 +236,7 @@
     <ul id="rules-bonus"></ul>
     <h2>Malus</h2>
     <ul id="rules-malus"></ul>
-    <p id="secret-info" class="muted"></p>
+    <p id="secret-info" class="hint"></p>
   </section>
 
   <section id="tab-admin" hidden>
@@ -119,11 +245,11 @@
       <label>Giocatore<select name="player" required></select></label>
       <label>Regola<select name="rule"><option value="">— personalizzato —</option></select></label>
       <div class="two">
-        <label>Punti (negativi = malus)<input name="points" type="number" required></label>
-        <label>Quante volte<input name="qty" type="number" min="1" value="1" required></label>
+        <label>Punti (negativi = malus)<input name="points" type="number" inputmode="numeric" required></label>
+        <label>Quante volte<input name="qty" type="number" inputmode="numeric" min="1" value="1" required></label>
       </div>
       <label>Descrizione<input name="note" required maxlength="80"></label>
-      <p class="muted">"Quante volte" serve per le regole "per ogni" (sconosciuto nel selfie, vittima della politica…). Gli eventi delle regole 🤫 compaiono a tutti come "Bonus/Malus segreto" finché non vengono svelate.</p>
+      <p class="hint">"Quante volte" serve per le regole "per ogni" (sconosciuto nel selfie, vittima della politica…). Gli eventi delle regole 🤫 compaiono a tutti come "Bonus/Malus segreto" finché non vengono svelate.</p>
       <button class="primary">Assegna</button>
     </form>
     <h3>Ultimi eventi</h3>
@@ -134,23 +260,24 @@
 
     <h2>Partecipanti</h2>
     <form id="player-form" class="two">
-      <input name="pname" placeholder="Nome e cognome" required maxlength="40">
-      <button class="primary">Aggiungi</button>
+      <input name="pname" placeholder="Nome e cognome" aria-label="Nome del partecipante" required maxlength="40" style="margin:0">
+      <button class="primary" style="width:auto">Aggiungi</button>
     </form>
     <ul id="player-list"></ul>
 
     <h2>Regole bonus/malus</h2>
     <form id="rule-form">
       <div class="two">
-        <input name="label" placeholder="Es. Balla sul tavolo" required maxlength="80">
-        <input name="points" type="number" placeholder="Punti" required>
+        <input name="label" placeholder="Es. Balla sul tavolo" aria-label="Testo della regola" required maxlength="80">
+        <input name="points" type="number" inputmode="numeric" placeholder="Punti" aria-label="Punti" required style="max-width:110px">
       </div>
       <label><input type="checkbox" name="secret"> 🤫 Segreta (tutti la vedono solo un'ora prima della fine)</label>
-      <div class="two">
+      <div class="two" style="margin-top:12px">
         <button class="primary" id="rule-save">Aggiungi regola</button>
         <button type="button" id="rule-cancel" hidden>Annulla</button>
       </div>
-    </form>    <ul id="rule-list"></ul>
+    </form>
+    <ul id="rule-list"></ul>
 
     <h2>Orari</h2>
     <form id="cfg-form">
@@ -160,6 +287,22 @@
     </form>
   </section>
 </main>
-<script type="module" src="app.js?v=6"></script><!-- aumenta v a ogni modifica di app.js: evita che il browser usi la versione vecchia in cache -->
+
+<nav aria-label="Sezioni">
+  <button data-tab="classifica" class="on" aria-current="page">
+    <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>Classifica</button>
+  <button data-tab="giocatori">
+    <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Giocatori</button>
+  <button data-tab="squadra">
+    <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>Mia squadra</button>
+  <button data-tab="regole">
+    <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>Regole</button>
+  <button data-tab="admin" hidden>
+    <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Admin</button>
+</nav>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script type="module" src="app.js?v=7"></script><!-- aumenta v a ogni modifica di app.js: evita che il browser usi la versione vecchia in cache -->
 </body>
 </html>
