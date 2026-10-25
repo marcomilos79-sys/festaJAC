@@ -27,6 +27,8 @@
   details li, .row { display:flex; gap:8px; align-items:center; padding:6px 0; border-top:1px solid var(--line); }
   .row { padding:8px 12px; border-top:1px solid var(--line); }
   .grow { flex:1; min-width:0; }
+  label.grow { display:flex; gap:8px; align-items:center; }
+  .av { width:32px; height:32px; border-radius:50%; flex:none; object-fit:cover; display:inline-grid; place-items:center; background:var(--line); color:var(--acc); font-weight:700; }
   .pts { margin-left:auto; font-weight:700; white-space:nowrap; }
   .plus { color:var(--plus); } .minus { color:var(--minus); }
   small, .muted { color:var(--muted); }
@@ -150,6 +152,6 @@
     </form>
   </section>
 </main>
-<script type="module" src="app.js?v=4"></script><!-- aumenta v a ogni modifica di app.js: evita che il browser usi la versione vecchia in cache -->
+<script type="module" src="app.js?v=5"></script><!-- aumenta v a ogni modifica di app.js: evita che il browser usi la versione vecchia in cache -->
 </body>
 </html>

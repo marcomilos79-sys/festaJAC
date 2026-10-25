@@ -41,6 +41,15 @@ const BASE_RULES = [
   ['Interferisci con i giochi di Jacopo aiutandolo (cruciverba, bicchieri)', -25],
 ];
 
+// Foto profilo (ritagliate dal sondaggio WhatsApp) in img/<nome-in-minuscolo>.png; chi non ce l'ha mostra l'iniziale.
+// shortcut: legate al nome, se rinomini un partecipante la foto sparisce finché non rinomini anche il file.
+const PHOTOS = new Set(['marco-milos', 'gabritir', 'cri', 'sofia-dina', 'riccardo-daniele', 'edoardo-massarelli', 'alessandra-volpi',
+  'panzi', 'vi', 'aimee', 'alessandro-verdi', 'sara-azzarelli', 'sara', 'leo-verdacchi']);
+const slug = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim().replace(/\s+/g, '-');
+const avatar = name => PHOTOS.has(slug(name))
+  ? `<img class="av" src="img/${slug(name)}.png" alt="">`
+  : `<span class="av">${esc(name.trim()[0]?.toUpperCase() ?? '?')}</span>`;
+
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
 const fmt = n => `<span class="pts ${n > 0 ? 'plus' : n < 0 ? 'minus' : ''}">${n > 0 ? '+' : ''}${n}</span>`;
@@ -155,12 +164,12 @@ function render() {
   $('#lb-teams').innerHTML = teams.map((t, i) => `
     <li><details data-id="t${t.id}" ${isOpen('t' + t.id)}>
       <summary><span class="rank">${i + 1}</span><span class="grow"><b>${esc(t.name)}</b> <small>di ${esc(t.owner)}</small></span>${fmt(t.pts)}</summary>
-      <ul>${t.members.map(id => `<li><span class="grow">${esc(pname(id))}${id === t.captain ? ' <b>©</b>' : ''}</span>${fmt(memberScore(t, id, sc))}</li>`).join('')}</ul>
+      <ul>${t.members.map(id => `<li>${avatar(pname(id))}<span class="grow">${esc(pname(id))}${id === t.captain ? ' <b>©</b>' : ''}</span>${fmt(memberScore(t, id, sc))}</li>`).join('')}</ul>
     </details></li>`).join('') || '<li class="muted">Nessuna squadra ancora.</li>';
 
   $('#lb-players').innerHTML = [...players].sort((a, b) => (sc[b.id] || 0) - (sc[a.id] || 0)).map((p, i) => `
     <li><details data-id="p${p.id}" ${isOpen('p' + p.id)}>
-      <summary><span class="rank">${i + 1}</span><span class="grow">${esc(p.name)}</span>${fmt(sc[p.id] || 0)}</summary>
+      <summary><span class="rank">${i + 1}</span>${avatar(p.name)}<span class="grow">${esc(p.name)}</span>${fmt(sc[p.id] || 0)}</summary>
       <ul>${events.filter(e => e.playerId === p.id).map(e => `<li><span class="grow">${esc(note(e))} <small>${time(e.at)}</small></span>${fmt(e.points)}</li>`).join('') || '<li class="muted">Ancora niente.</li>'}</ul>
     </details></li>`).join('') || '<li class="muted">Nessun partecipante ancora.</li>';
 
@@ -190,7 +199,7 @@ function render() {
     $('#pick').innerHTML = players.map(p => {
       const on = d.members.includes(p.id);
       return `<li class="row">
-        <label class="grow"><input type="checkbox" data-m="${esc(p.id)}" ${on ? 'checked' : ''} ${!can || (!on && full) ? 'disabled' : ''}> ${esc(p.name)}</label>
+        <label class="grow"><input type="checkbox" data-m="${esc(p.id)}" ${on ? 'checked' : ''} ${!can || (!on && full) ? 'disabled' : ''}>${avatar(p.name)}${esc(p.name)}</label>
         <label>© <input type="radio" name="cap" data-c="${esc(p.id)}" aria-label="Capitano: ${esc(p.name)}" ${d.captain === p.id ? 'checked' : ''} ${!can || !on ? 'disabled' : ''}></label>
       </li>`;
     }).join('') || '<li class="muted">Gli admin non hanno ancora inserito i partecipanti.</li>';
@@ -210,7 +219,7 @@ function render() {
   const del = path => `<button type="button" data-del="${esc(path)}" aria-label="Elimina">✕</button>`;
   $('#ev-list').innerHTML = events.map(e => `<li class="row"><span class="grow">${esc(pname(e.playerId))}: ${esc(note(e))} <small>${time(e.at)} · ${esc(e.by)}</small></span>${fmt(e.points)}${del('events/' + e.id)}</li>`).join('');
   $('#team-list').innerHTML = [...S.teams].sort(byName).map(t => `<li class="row"><span class="grow">${esc(t.name)} <small>di ${esc(t.owner)}</small></span><button type="button" data-edit="${esc(t.id)}">Modifica</button>${del('teams/' + t.id)}</li>`).join('') || '<li class="muted">Nessuna squadra ancora.</li>';
-  $('#player-list').innerHTML = players.map(p => `<li class="row"><span class="grow">${esc(p.name)}</span>${del('players/' + p.id)}</li>`).join('');
+  $('#player-list').innerHTML = players.map(p => `<li class="row">${avatar(p.name)}<span class="grow">${esc(p.name)}</span>${del('players/' + p.id)}</li>`).join('');
   $('#rule-list').innerHTML = rules.map(r => `<li class="row"><span class="grow">${r.secret ? '🤫 ' : ''}${esc(r.label)}</span>${rulePts(r)}<button type="button" data-editrule="${esc(rulePath(r))}">Modifica</button>${del(rulePath(r))}</li>`).join('');}
 setInterval(render, 30000); // aggiorna stato blocco/fine anche senza nuovi dati
 
