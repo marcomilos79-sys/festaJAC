@@ -43,8 +43,8 @@ const BASE_RULES = [
 
 // Foto profilo (ritagliate dal sondaggio WhatsApp) in img/<nome-in-minuscolo>.png; chi non ce l'ha mostra l'iniziale.
 // shortcut: legate al nome, se rinomini un partecipante la foto sparisce finché non rinomini anche il file.
-const PHOTOS = new Set(['marco-milos', 'gabritir', 'cri', 'sofia-dina', 'riccardo-daniele', 'edoardo-massarelli', 'alessandra-volpi',
-  'panzi', 'vi', 'aimee', 'alessandro-verdi', 'sara-azzarelli', 'sara', 'leo-verdacchi']);
+const PHOTOS = new Set(['marco-milos', 'gabritir', 'crispif', 'matteo-bali', 'sofia-dina', 'riccardo-daniele', 'edoardo-massarelli', 'alessandra-volpi',
+  'panzi', 'vi', 'aimee', 'alessandro-verdi', 'sasi', 'sara', 'leo-verdacchi']);
 const slug = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim().replace(/\s+/g, '-');
 const avatar = name => PHOTOS.has(slug(name))
   ? `<img class="av" src="img/${slug(name)}.png" alt="">`
@@ -125,8 +125,8 @@ async function shrink(file) {
 }
 
 // Partecipanti iniziali (dal sondaggio WhatsApp), caricati in automatico come il regolamento.
-const BASE_PLAYERS = ['Marco Milos', 'Alessandra Volpi', 'Gabritir', 'Cri', 'Sofia Dina', 'Riccardo Daniele', 'Edoardo Massarelli', 'Panzi',
-  'Vi', 'Matteo Bali', 'Aimée', 'Alessandro Verdi', 'Sara Azzarelli', 'Sara', 'Leo Verdacchi', 'Giulioanve'];
+const BASE_PLAYERS = ['Marco Milos', 'Alessandra Volpi', 'Gabritir', 'Crispif', 'Sofia Dina', 'Riccardo Daniele', 'Edoardo Massarelli', 'Panzi',
+  'Vi', 'Matteo Bali', 'Aimée', 'Alessandro Verdi', 'Sasi', 'Sara', 'Leo Verdacchi', 'Giulioanve'];
 
 // Caricamenti iniziali, ognuno una volta sola: i flag in config/game evitano doppioni anche con due admin.
 const SEEDS = {
@@ -203,7 +203,7 @@ function render() {
   const teams = S.teams.map(t => ({ ...t, pts: teamScore(t, sc) })).sort((a, b) => b.pts - a.pts);
   $('#lb-teams').innerHTML = teams.map((t, i) => `
     <li style="--i:${i}"><details data-id="t${t.id}" ${isOpen('t' + t.id)}>
-      <summary><span class="rank r${i + 1}">${i + 1}</span><span class="grow"><span class="tname">${esc(t.name)}</span><small>di ${esc(t.owner)}</small>
+      <summary><span class="rank r${i + 1}">${i + 1}</span><span class="grow"><span class="tname">${esc(t.name)}</span><small>di ${esc(pname(t.id))}</small>
         <span class="stack">${t.members.map(id => avatar(pname(id))).join('')}</span></span>${fmt(t.pts)}</summary>
       <ul>${t.members.map(id => `<li>${avatar(pname(id))}<span class="grow">${esc(pname(id))}${id === t.captain ? '<b class="cap-tag" title="Capitano">C</b>' : ''}</span>${fmt(memberScore(t, id, sc))}</li>`).join('')}</ul>
     </details></li>`).join('') || '<li class="muted">Nessuna squadra ancora.</li>';
@@ -297,7 +297,7 @@ function render() {
     return `<li class="row">${avatar(p.name)}<span class="grow">${t ? `<b>${esc(t.name)}</b>` : '<i class="muted">nessuna squadra</i>'} <small>di ${esc(p.name)}${p.uid ? ' · entrato' : ''}</small></span>
       <button type="button" data-edit="${esc(p.id)}">${t ? 'Modifica' : 'Crea'}</button>${t ? del('teams/' + t.id) : ''}</li>`;
   }).join('');
-  $('#player-list').innerHTML = players.map(p => `<li class="row">${avatar(p.name)}<span class="grow">${esc(p.name)}</span>${del('players/' + p.id)}</li>`).join('');
+  $('#player-list').innerHTML = players.map(p => `<li class="row">${avatar(p.name)}<span class="grow">${esc(p.name)}</span><button type="button" data-rename="${esc(p.id)}">Rinomina</button>${del('players/' + p.id)}</li>`).join('');
   $('#rule-list').innerHTML = rules.map(r => `<li class="row"><span class="grow">${r.secret ? '🤫 ' : ''}${esc(r.label)}</span>${rulePts(r)}<button type="button" data-editrule="${esc(rulePath(r))}">Modifica</button>${del(rulePath(r))}</li>`).join('');}
 setInterval(render, 30000); // aggiorna stato blocco/fine anche senza nuovi dati
 
@@ -448,12 +448,16 @@ $('#rule-form').addEventListener('submit', act(async e => {
 const editTeam = id => { S.editing = id; render(); };
 $('#stop-edit').addEventListener('click', () => editTeam(null));
 $('#tab-admin').addEventListener('click', act(async e => {
-  const { edit, editrule, del: path, ok, no } = e.target.dataset;
+  const { edit, editrule, rename, del: path, ok, no } = e.target.dataset;
   if (ok || no) e.target.disabled = true; // niente doppio tocco = niente punti doppi
   if (ok) await validateProof(ok);
   if (no) await updateDoc(doc(db, 'proofs', no), { status: 'no' });
   if (edit) { editTeam(edit); $('[data-tab=squadra]').click(); }
   if (editrule) editRule(editrule);
+  if (rename) {
+    const name = prompt('Nuovo nome (è quello con cui entra nel gioco):', S.players.find(p => p.id === rename)?.name)?.trim().slice(0, 40);
+    if (name) { await updateDoc(doc(db, 'players', rename), { name }); toast('Rinominato'); }
+  }
   if (!path || !confirm('Eliminare?')) return;
   await deleteDoc(doc(db, path));
   if (path.startsWith('players/')) await deleteDoc(doc(db, 'teams', path.slice(8))); // via anche la sua squadra
