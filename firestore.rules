@@ -28,7 +28,7 @@ service cloud.firestore {
     match /teams/{pid} {
       allow read: if true;
       allow create, update: if isAdmin()
-        || (ownsPlayer(pid) && beforeLock() && validTeam(request.resource.data));
+        || (ownsPlayer(pid) && beforeLock() && validTeam(request.resource.data) && pid in request.resource.data.members);
       allow delete: if isAdmin();
     }
 

@@ -43,7 +43,7 @@ const BASE_RULES = [
 
 // Foto profilo (ritagliate dal sondaggio WhatsApp) in img/<nome-in-minuscolo>.png; chi non ce l'ha mostra l'iniziale.
 // shortcut: legate al nome, se rinomini un partecipante la foto sparisce finché non rinomini anche il file.
-const PHOTOS = new Set(['marco-milos', 'gabritir', 'crispif', 'matteo-bali', 'sofia-dina', 'riccardo-daniele', 'edoardo-massarelli', 'alessandra-volpi',
+const PHOTOS = new Set(['marco-milos', 'gabritir', 'crispif', 'giulioanve', 'sofia-dina', 'riccardo-daniele', 'edoardo-massarelli', 'alessandra-volpi',
   'panzi', 'vi', 'aimee', 'alessandro-verdi', 'sasi', 'sara', 'leo-verdacchi']);
 const slug = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim().replace(/\s+/g, '-');
 const avatar = name => PHOTOS.has(slug(name))
@@ -244,14 +244,15 @@ function render() {
       S.draft = { members: mine.members.filter(id => ids.has(id)), captain: mine.captain };
       $('#team-form').tname.value = mine.name;
     }
-    const d = S.draft ?? { members: [], captain: null };
+    const d = S.draft ??= { members: [], captain: null };
+    if (!d.members.includes(target)) d.members = [target, ...d.members].slice(0, 5); // chi fa la squadra ci è sempre dentro
     const can = ph === 'open' || (S.admin && !!S.editing), // anche gli admin giocano: la propria squadra si blocca alle 20 come per tutti
       full = d.members.length >= 5;
-    $('#pick').innerHTML = players.map((p, i) => {
-      const on = d.members.includes(p.id), dis = !can || (!on && full);
+    $('#pick').innerHTML = [...players].sort((a, b) => (b.id === target) - (a.id === target)).map((p, i) => {
+      const self = p.id === target, on = d.members.includes(p.id), dis = !can || (!on && full);
       return `<li class="row pick ${on ? 'on' : ''} ${dis ? 'dis' : ''}" style="--i:${i}">
-        <label class="grow"><input type="checkbox" class="sr" data-m="${esc(p.id)}" ${on ? 'checked' : ''} ${dis ? 'disabled' : ''}>
-          <span class="tick" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>${avatar(p.name)}<span class="grow">${esc(p.name)}</span></label>
+        <label class="grow"><input type="checkbox" class="sr" data-m="${esc(p.id)}" ${on ? 'checked' : ''} ${dis || self ? 'disabled' : ''}>
+          <span class="tick" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>${avatar(p.name)}<span class="grow">${esc(p.name)}${self ? ' <small>(tu)</small>' : ''}</span></label>
         <label class="cap" title="Capitano"><input type="radio" class="sr" name="cap" data-c="${esc(p.id)}" aria-label="Capitano: ${esc(p.name)}" ${d.captain === p.id ? 'checked' : ''} ${!can || !on ? 'disabled' : ''}><span aria-hidden="true">C</span></label>
       </li>`;
     }).join('') || '<li class="muted">Gli admin non hanno ancora inserito i partecipanti.</li>';
