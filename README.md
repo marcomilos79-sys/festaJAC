@@ -23,7 +23,7 @@ Ogni volta che aggiorni [firestore.rules](firestore.rules), ricordati di ripubbl
 ## Chi può fare cosa (applicato dalle regole Firestore, non solo dall'interfaccia)
 
 - Tutti (anche senza login): vedono classifiche, squadre, profili giocatori, regole.
-- Giocatore: entra scrivendo **solo il suo nome** (come l'hanno inserito gli admin), poi crea/modifica **solo la propria** squadra, solo prima dell'orario di blocco (ora del server), solo 5 giocatori distinti, lui compreso, con capitano tra questi.
+- Giocatore: entra scrivendo **solo il suo nome** (come l'hanno inserito gli admin), poi crea/modifica **solo la propria** squadra, solo prima dell'orario di blocco (ora del server), solo 5 giocatori distinti, lui escluso, con capitano tra questi.
 - Admin: tutto, in qualsiasi momento (eventi, partecipanti, regole, orari, squadre).
 
 Per correggere un punteggio: elimina l'evento sbagliato dalla lista *Ultimi eventi* e riassegnalo.
